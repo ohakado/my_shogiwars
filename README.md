@@ -6,14 +6,12 @@
 
 ## 必要要件
 
-- Python 3.7以上（Python 3.14推奨）
+- Python 3.14以降
 - Google Chrome（ChromeDriverは自動的にインストールされます）
 
 ## インストール
 
-### Python 3.14 (Homebrew) を使用する場合
-
-Python 3.14以降では外部管理環境のため、仮想環境を使用することを推奨します：
+Python 3.14以降では外部管理環境のため、仮想環境を使用します：
 
 ```bash
 # 仮想環境を作成
@@ -23,12 +21,6 @@ python3 -m venv venv
 source venv/bin/activate
 
 # パッケージをインストール
-pip install -r requirements.txt
-```
-
-### それ以前のPythonバージョンの場合
-
-```bash
 pip install -r requirements.txt
 ```
 
