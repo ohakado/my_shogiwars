@@ -357,19 +357,31 @@ def scrape_page(
                         if badge_text and badge_text.startswith("#"):
                             badges.append(badge_text)
 
+        # winnerから各プレイヤーのresultを計算
+        if winner == "sente":
+            sente_result = "win"
+            gote_result = "lose"
+        elif winner == "gote":
+            sente_result = "lose"
+            gote_result = "win"
+        else:  # draw
+            sente_result = "draw"
+            gote_result = "draw"
+
         game_info = {
             "url": full_url,
             "game_id": game_id,
             "sente": {
                 "name": sente,
-                "class": sente_class
+                "class": sente_class,
+                "result": sente_result
             },
             "gote": {
                 "name": gote,
-                "class": gote_class
+                "class": gote_class,
+                "result": gote_result
             },
             "datetime": iso_datetime,
-            "winner": winner,
             "badges": badges
         }
 

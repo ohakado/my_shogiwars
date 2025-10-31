@@ -141,14 +141,15 @@ JSONファイルには以下の形式でデータが保存されます:
       "game_id": "ohakado-Crazystone-20241031_232343",
       "sente": {
         "name": "ohakado",
-        "class": "五段"
+        "class": "五段",
+        "result": "win"
       },
       "gote": {
         "name": "Crazystone",
-        "class": "四段"
+        "class": "四段",
+        "result": "lose"
       },
       "datetime": "2024-10-31T23:23:43",
-      "winner": "sente",
       "badges": ["#角換わり", "#角換わり棒銀"]
     },
     {
@@ -156,14 +157,15 @@ JSONファイルには以下の形式でデータが保存されます:
       "game_id": "saitouraizi-ohakado-20241031_232003",
       "sente": {
         "name": "saitouraizi",
-        "class": "六段"
+        "class": "六段",
+        "result": "lose"
       },
       "gote": {
         "name": "ohakado",
-        "class": "五段"
+        "class": "五段",
+        "result": "win"
       },
       "datetime": "2024-10-31T23:20:03",
-      "winner": "gote",
       "badges": []
     }
   ]
@@ -182,11 +184,12 @@ JSONファイルには以下の形式でデータが保存されます:
   - `sente`: 先手プレイヤー情報（オブジェクト）
     - `name`: 先手プレイヤーのユーザーID
     - `class`: 先手プレイヤーの段位（例: "五段"）
+    - `result`: 先手プレイヤーの勝敗結果（`"win"`: 勝ち、`"lose"`: 負け、`"draw"`: 引き分け）
   - `gote`: 後手プレイヤー情報（オブジェクト）
     - `name`: 後手プレイヤーのユーザーID
     - `class`: 後手プレイヤーの段位（例: "四段"）
+    - `result`: 後手プレイヤーの勝敗結果（`"win"`: 勝ち、`"lose"`: 負け、`"draw"`: 引き分け）
   - `datetime`: 対局日時（ISO 8601形式、日本時間）
-  - `winner`: 勝敗結果（`"sente"`: 先手勝ち、`"gote"`: 後手勝ち、`"draw"`: 引き分け）
   - `badges`: 棋譜に付けられたバッジのリスト（例: `["#角換わり", "#船囲い"]`）
 
 ## 使用例
