@@ -126,14 +126,24 @@ JSONファイルには以下の形式でデータが保存されます:
     {
       "url": "https://shogiwars.heroz.jp/games/ohakado-Crazystone-20241031_232343?locale=ja",
       "game_id": "ohakado-Crazystone-20241031_232343",
-      "opponent": "Crazystone",
-      "datetime": "2024-10-31T23:23:43"
+      "sente": "ohakado",
+      "sente_class": "五段",
+      "gote": "Crazystone",
+      "gote_class": "四段",
+      "datetime": "2024-10-31T23:23:43",
+      "winner": "sente",
+      "badges": ["#角換わり", "#角換わり棒銀"]
     },
     {
       "url": "https://shogiwars.heroz.jp/games/saitouraizi-ohakado-20241031_232003?locale=ja",
       "game_id": "saitouraizi-ohakado-20241031_232003",
-      "opponent": "saitouraizi",
-      "datetime": "2024-10-31T23:20:03"
+      "sente": "saitouraizi",
+      "sente_class": "六段",
+      "gote": "ohakado",
+      "gote_class": "五段",
+      "datetime": "2024-10-31T23:20:03",
+      "winner": "gote",
+      "badges": []
     }
   ]
 }
@@ -148,8 +158,13 @@ JSONファイルには以下の形式でデータが保存されます:
 - `replays`: 棋譜URLのリスト
   - `url`: 棋譜ページのURL（クエリパラメータ付き）
   - `game_id`: 対局ID（クエリパラメータなし）
-  - `opponent`: 対戦相手のユーザーID
+  - `sente`: 先手プレイヤーのユーザーID
+  - `sente_class`: 先手プレイヤーの段位（例: "五段"）
+  - `gote`: 後手プレイヤーのユーザーID
+  - `gote_class`: 後手プレイヤーの段位（例: "四段"）
   - `datetime`: 対局日時（ISO 8601形式、日本時間）
+  - `winner`: 勝敗結果（`"sente"`: 先手勝ち、`"gote"`: 後手勝ち、`"draw"`: 引き分け）
+  - `badges`: 棋譜に付けられたバッジのリスト（例: `["#角換わり", "#船囲い"]`）
 
 ## 使用例
 

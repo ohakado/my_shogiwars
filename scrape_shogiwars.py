@@ -177,7 +177,7 @@ def scrape_page(
     month: str,
     gtype: str,
     page: int
-) -> List[Dict[str, str]]:
+) -> tuple[List[Dict[str, str]], bool]:
     """
     1ページ分の棋譜URLを抽出
 
@@ -190,7 +190,7 @@ def scrape_page(
         page: ページ番号
 
     Returns:
-        棋譜URLのリスト
+        (棋譜URLのリスト, ページに対局が存在するか)
     """
     base_url = "https://shogiwars.heroz.jp/games/history"
 
@@ -220,9 +220,14 @@ def scrape_page(
         page_source = driver.page_source
     except Exception as e:
         print(f"Error fetching page {page}: {e}")
-        return []
+        return [], False
 
     soup = BeautifulSoup(page_source, "html.parser")
+
+    # デバッグ用: 一時的にHTMLを保存
+    if page == 1:
+        with open("tmp/history_page_for_badges.html", "w", encoding="utf-8") as f:
+            f.write(page_source)
 
     # 棋譜URLを抽出
     game_urls = []
@@ -230,6 +235,9 @@ def scrape_page(
     # 対局履歴のリンクを探す
     # パターン: https://shogiwars.heroz.jp/games/ohakado-guranola_oisi-20251028_220236
     game_links = soup.find_all("a", href=re.compile(r"/games/[^/]+"))
+
+    # ページに対局が存在するかを記録（フィルタリング前）
+    total_games_on_page = 0
 
     for link in game_links:
         href = link.get("href")
@@ -260,20 +268,20 @@ def scrape_page(
         if not re.match(r'^[^-]+-[^-]+-\d{8}_\d{6}', game_id):
             continue
 
+        # ここまで来たら有効な対局
+        total_games_on_page += 1
+
         # 対戦相手が指定されている場合はフィルタリング
         if opponent and opponent.lower() not in game_id.lower():
             continue
 
         # game_idから情報を抽出
-        # 形式: user1-user2-YYYYMMDD_HHMMSS
+        # 形式: [先手]-[後手]-YYYYMMDD_HHMMSS
         parts = game_id.split("-")
         if len(parts) >= 3:
-            player1 = parts[0]
-            player2 = parts[1]
+            sente = parts[0]  # 先手
+            gote = parts[1]   # 後手
             timestamp_str = parts[2]
-
-            # 対戦相手を特定（user_idではない方）
-            game_opponent = player2 if player1.lower() == user_id.lower() else player1
 
             # タイムスタンプをISO形式に変換
             # YYYYMMDD_HHMMSS → YYYY-MM-DDTHH:MM:SS
@@ -286,19 +294,86 @@ def scrape_page(
             else:
                 iso_datetime = None
         else:
-            game_opponent = None
+            sente = None
+            gote = None
             iso_datetime = None
+
+        # 勝敗情報を取得
+        winner = "draw"  # デフォルトは引き分け
+        # リンクの親要素（game_players）から勝敗画像を探す
+        # HTMLの構造: <div class="game_players"> ... <div class="left_player"> ... <img class="win_lose_img" src="...sente_win.png">
+        game_players_div = link.find_parent("div", class_="game_players")
+        if not game_players_div:
+            # game_players が見つからない場合は、上位の親要素を探す
+            game_players_div = link.find_parent()
+            for _ in range(5):  # 最大5階層まで探す
+                if game_players_div and "game_players" in game_players_div.get("class", []):
+                    break
+                if game_players_div:
+                    game_players_div = game_players_div.find_parent()
+                else:
+                    break
+
+        if game_players_div:
+            # game_players内のすべての画像を探す
+            img_tags = game_players_div.find_all("img")
+            for img in img_tags:
+                src = img.get("src", "")
+                if "sente_win" in src:
+                    winner = "sente"
+                    break
+                elif "sente_lose" in src:
+                    winner = "gote"
+                    break
+
+        # プレイヤークラス（段位）情報を取得
+        sente_class = None
+        gote_class = None
+        if game_players_div:
+            # player_names div内から段位を取得
+            player_names_div = game_players_div.find("div", class_="player_names")
+            if player_names_div:
+                # 先手（左側）の段位
+                player_dan_text_left = player_names_div.find("div", class_="player_dan_text_left")
+                if player_dan_text_left:
+                    sente_class = player_dan_text_left.get_text(strip=True)
+
+                # 後手（右側）の段位
+                player_dan_text_right = player_names_div.find("div", class_="player_dan_text_right")
+                if player_dan_text_right:
+                    gote_class = player_dan_text_right.get_text(strip=True)
+
+        # バッジ情報を取得
+        badges = []
+        # game_players_divの親要素からgame_badgesを探す
+        if game_players_div:
+            parent_container = game_players_div.find_parent()
+            if parent_container:
+                game_badges_div = parent_container.find("div", class_="game_badges")
+                if game_badges_div:
+                    badge_links = game_badges_div.find_all("a", class_="badge_text")
+                    for badge_link in badge_links:
+                        badge_text = badge_link.get_text(strip=True)
+                        if badge_text and badge_text.startswith("#"):
+                            badges.append(badge_text)
 
         game_info = {
             "url": full_url,
             "game_id": game_id,
-            "opponent": game_opponent,
-            "datetime": iso_datetime
+            "sente": sente,
+            "sente_class": sente_class,
+            "gote": gote,
+            "gote_class": gote_class,
+            "datetime": iso_datetime,
+            "winner": winner,
+            "badges": badges
         }
 
         game_urls.append(game_info)
 
-    return game_urls
+    # ページに対局が存在したかを返す
+    has_games = total_games_on_page > 0
+    return game_urls, has_games
 
 
 def scrape_game_urls(
@@ -339,16 +414,23 @@ def scrape_game_urls(
             break
 
         print(f"Fetching page {page}...")
-        game_urls = scrape_page(driver, user_id, opponent, month, gtype, page)
+        game_urls, has_games = scrape_page(driver, user_id, opponent, month, gtype, page)
 
-        if not game_urls:
+        # ページに対局が全く存在しない場合は終了
+        if not has_games:
             print(f"No more games found at page {page}")
             break
 
+        # フィルタリング後の結果を追加
         for game in game_urls:
             print(f"Found: {game['url']}")
 
         all_game_urls.extend(game_urls)
+
+        # フィルタリング後が0件でも、ページに対局があれば次へ進む
+        if not game_urls and opponent:
+            print(f"No games with opponent '{opponent}' on page {page}, checking next page...")
+
         page += 1
 
     print(f"\nTotal games found: {len(all_game_urls)}")
