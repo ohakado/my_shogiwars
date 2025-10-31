@@ -360,10 +360,14 @@ def scrape_page(
         game_info = {
             "url": full_url,
             "game_id": game_id,
-            "sente": sente,
-            "sente_class": sente_class,
-            "gote": gote,
-            "gote_class": gote_class,
+            "sente": {
+                "name": sente,
+                "class": sente_class
+            },
+            "gote": {
+                "name": gote,
+                "class": gote_class
+            },
             "datetime": iso_datetime,
             "winner": winner,
             "badges": badges
