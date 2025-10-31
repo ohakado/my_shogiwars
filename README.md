@@ -6,10 +6,27 @@
 
 ## 必要要件
 
-- Python 3.7以上
+- Python 3.7以上（Python 3.14推奨）
 - Google Chrome（ChromeDriverは自動的にインストールされます）
 
 ## インストール
+
+### Python 3.14 (Homebrew) を使用する場合
+
+Python 3.14以降では外部管理環境のため、仮想環境を使用することを推奨します：
+
+```bash
+# 仮想環境を作成
+python3 -m venv venv
+
+# 仮想環境を有効化
+source venv/bin/activate
+
+# パッケージをインストール
+pip install -r requirements.txt
+```
+
+### それ以前のPythonバージョンの場合
 
 ```bash
 pip install -r requirements.txt
@@ -46,6 +63,10 @@ python scrape_shogiwars.py
 ### 基本的な使い方
 
 ```bash
+# 仮想環境を使用している場合は先に有効化
+source venv/bin/activate
+
+# スクリプトを実行
 python scrape_shogiwars.py
 ```
 
