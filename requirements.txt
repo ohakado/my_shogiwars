@@ -1,5 +1,12 @@
+# スクレイピング用パッケージ
 selenium>=4.15.0
 undetected-chromedriver>=3.5.0
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 setuptools>=80.0.0
+
+# Webアプリケーション用パッケージ
+streamlit>=1.51.0
+pandas>=2.3.0
+# 注意: pyarrowはPython 3.14でビルドに失敗する可能性があります
+# pyarrowなしでも基本的な機能は動作します
