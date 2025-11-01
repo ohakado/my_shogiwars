@@ -171,7 +171,7 @@ def login_to_shogiwars(driver, username: str, password: str, manual_captcha: boo
 
 def scrape_page(
     driver,
-    user_id: str,
+    user: str,
     opponent: str,
     month: str,
     gtype: str,
@@ -182,7 +182,7 @@ def scrape_page(
 
     Args:
         driver: Seleniumのwebdriver
-        user_id: ユーザーID
+        user: ユーザーID
         opponent: 対戦相手のID
         month: 対象月（YYYY-MM形式）
         gtype: ゲームタイプ
@@ -200,7 +200,7 @@ def scrape_page(
         "locale": "ja",
         "month": month,
         "opponent_type": "normal",
-        "user_id": user_id,
+        "user_id": user,
         "page": page
     }
 
@@ -393,11 +393,11 @@ def scrape_page(
 
 def scrape_game_urls(
     driver,
-    user_id: str,
+    user: str,
     opponent: str,
     month: str = None,
     gtype: str = None,
-    max_pages: int = None
+    limit: int = None
 ) -> List[Dict[str, str]]:
     """
     将棋ウォーズの対局履歴ページから特定の対戦相手との棋譜URLを抽出
@@ -405,11 +405,11 @@ def scrape_game_urls(
 
     Args:
         driver: Seleniumのwebdriver
-        user_id: ユーザーID
+        user: ユーザーID
         opponent: 対戦相手のID
         month: 対象月（YYYY-MM形式、Noneの場合は現在月）
         gtype: ゲームタイプ（None=10分切れ負け, s1=1手10秒, sb=3分切れ負け）
-        max_pages: 最大ページ数（Noneの場合は全ページを取得）
+        limit: 最大ページ数（Noneの場合は全ページを取得）
 
     Returns:
         棋譜URLのリスト
@@ -418,18 +418,18 @@ def scrape_game_urls(
     if month is None:
         month = datetime.now().strftime("%Y-%m")
 
-    print(f"Fetching game history for {user_id} vs {opponent} in {month}...")
+    print(f"Fetching game history for {user} vs {opponent} in {month}...")
 
     all_game_urls = []
     page = 1
 
     while True:
-        if max_pages is not None and page > max_pages:
-            print(f"Reached max_pages limit: {max_pages}")
+        if limit is not None and page > limit:
+            print(f"Reached limit: {limit}")
             break
 
         print(f"Fetching page {page}...")
-        game_urls, has_games = scrape_page(driver, user_id, opponent, month, gtype, page)
+        game_urls, has_games = scrape_page(driver, user, opponent, month, gtype, page)
 
         # ページに対局が全く存在しない場合は終了
         if not has_games:
@@ -484,7 +484,7 @@ def main():
     - SHOGIWARS_OPPONENT: 対戦相手のID（デフォルト: ""=全対局）
     - SHOGIWARS_MONTH: 対象月 YYYY-MM形式（デフォルト: 現在月）
     - SHOGIWARS_GTYPE: ゲームタイプ s1/sb/なし（デフォルト: なし=10分切れ負け）
-    - SHOGIWARS_MAX_PAGES: 取得する最大ページ数（デフォルト: なし=全ページ）
+    - SHOGIWARS_LIMIT: 取得する最大ページ数（デフォルト: なし=全ページ）
     - SHOGIWARS_OUTPUT: 出力ファイル名（デフォルト: 自動生成）
     - SHOGIWARS_HEADLESS: ヘッドレスモード true/false（デフォルト: false）
     - SHOGIWARS_MANUAL_CAPTCHA: 手動CAPTCHA待機 true/false（デフォルト: false）
@@ -498,8 +498,8 @@ def main():
     opponent = os.environ.get("SHOGIWARS_OPPONENT", "")
     month = os.environ.get("SHOGIWARS_MONTH", current_month)
     gtype = os.environ.get("SHOGIWARS_GTYPE") or None  # 空文字列の場合はNone
-    max_pages_str = os.environ.get("SHOGIWARS_MAX_PAGES")
-    max_pages = int(max_pages_str) if max_pages_str else None
+    limit_str = os.environ.get("SHOGIWARS_LIMIT")
+    limit = int(limit_str) if limit_str else None
     output_file = os.environ.get("SHOGIWARS_OUTPUT") or None
     headless = os.environ.get("SHOGIWARS_HEADLESS", "").lower() in ("true", "1", "yes")
     manual_captcha = os.environ.get("SHOGIWARS_MANUAL_CAPTCHA", "").lower() in ("true", "1", "yes")
@@ -531,16 +531,16 @@ def main():
         driver = uc.Chrome(options=options, version_main=None)
 
         # ログイン
-        login_success, user_id = login_to_shogiwars(driver, login_username, login_password, manual_captcha=manual_captcha)
+        login_success, user = login_to_shogiwars(driver, login_username, login_password, manual_captcha=manual_captcha)
         if not login_success:
             print("ログインに失敗しました。")
             return
 
-        if not user_id:
+        if not user:
             print("エラー: ログインユーザーのIDを取得できませんでした。")
             return
 
-        print(f"\n=== Scraping game history for user: {user_id} ===\n")
+        print(f"\n=== Scraping game history for user: {user} ===\n")
 
         # 出力ファイル名を生成（未指定の場合）
         if output_file is None:
@@ -553,10 +553,10 @@ def main():
             # ファイル名を生成
             if opponent:
                 # 対戦相手が指定されている場合
-                filename = f"game_replays_{gtype_str}_{month}_{user_id}_{opponent}.json"
+                filename = f"game_replays_{gtype_str}_{month}_{user}_{opponent}.json"
             else:
                 # 対戦相手が未指定（全検索）の場合
-                filename = f"game_replays_{gtype_str}_{month}_{user_id}.json"
+                filename = f"game_replays_{gtype_str}_{month}_{user}.json"
 
             output_filename = os.path.join(result_dir, filename)
             print(f"Output file: {output_filename}")
@@ -566,21 +566,21 @@ def main():
         # 棋譜URLを抽出
         game_urls = scrape_game_urls(
             driver=driver,
-            user_id=user_id,
+            user=user,
             opponent=opponent,
             month=month,
             gtype=gtype,
-            max_pages=max_pages
+            limit=limit
         )
 
         if game_urls:
             # 検索パラメータを記録
             query_params = {
-                "user_id": user_id,
+                "user": user,
                 "opponent": opponent if opponent else "(all)",
                 "month": month,
                 "gtype": gtype if gtype else "10min",
-                "max_pages": max_pages if max_pages else "(all)"
+                "limit": limit if limit else "(all)"
             }
 
             # JSONに保存

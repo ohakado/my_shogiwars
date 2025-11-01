@@ -82,16 +82,16 @@ python scrape_shogiwars.py
   - 未指定: 10分切れ負け
   - `s1`: 1手10秒
   - `sb`: 3分切れ負け
-- `SHOGIWARS_MAX_PAGES`: 取得する最大ページ数（デフォルト: 全ページ）
+- `SHOGIWARS_LIMIT`: 取得する最大ページ数（デフォルト: 全ページ）
 - `SHOGIWARS_OUTPUT`: 出力JSONファイル名（デフォルト: 自動生成）
 - `SHOGIWARS_HEADLESS`: ヘッドレスモードで実行（`true`/`false`、デフォルト: `false`）
 - `SHOGIWARS_MANUAL_CAPTCHA`: CAPTCHAを手動で完了するモード（`true`/`false`、デフォルト: `false`）
 
 **ファイル名の自動生成ルール**:
 - デフォルトでは `result/` ディレクトリに保存されます
-- 対戦相手未指定: `result/game_replays_[gtype]_[month]_[user_id].json`
+- 対戦相手未指定: `result/game_replays_[gtype]_[month]_[user].json`
   - 例: `result/game_replays_s1_2024-10_ohakado.json`
-- 対戦相手指定: `result/game_replays_[gtype]_[month]_[user_id]_[opponent].json`
+- 対戦相手指定: `result/game_replays_[gtype]_[month]_[user]_[opponent].json`
   - 例: `result/game_replays_s1_2024-10_ohakado_odakaho.json`
 
 **注意**:
@@ -118,11 +118,11 @@ JSONファイルには以下の形式でデータが保存されます:
 ```json
 {
   "params": {
-    "user_id": "ohakado",
+    "user": "ohakado",
     "opponent": "(all)",
     "month": "2024-10",
     "gtype": "s1",
-    "max_pages": 1
+    "limit": 1
   },
   "replays": [
     {
@@ -162,11 +162,11 @@ JSONファイルには以下の形式でデータが保存されます:
 ```
 
 - `params`: 検索に使用したパラメータ
-  - `user_id`: 検索対象ユーザーID
+  - `user`: 検索対象ユーザーID
   - `opponent`: 対戦相手（未指定の場合は "(all)"）
   - `month`: 対象月
   - `gtype`: ゲームタイプ（未指定の場合は "10min"）
-  - `max_pages`: 取得したページ数（全ページの場合は "(all)"）
+  - `limit`: 取得したページ数（全ページの場合は "(all)"）
 - `replays`: 棋譜URLのリスト
   - `url`: 棋譜ページのURL（クエリパラメータ付き）
   - `game_id`: 対局ID（クエリパラメータなし）
@@ -209,7 +209,7 @@ python scrape_shogiwars.py
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-export SHOGIWARS_MAX_PAGES="3"
+export SHOGIWARS_LIMIT="3"
 export SHOGIWARS_GTYPE="s1"
 python scrape_shogiwars.py
 # 出力: result/game_replays_s1_2025-11_ohakado.json
