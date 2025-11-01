@@ -213,19 +213,44 @@ if data:
         if table_data:
             df = pd.DataFrame(table_data)
 
-            # URLをクリック可能なリンクに変換
-            df_display = df.copy()
-            df_display = df_display.drop(columns=["game_id"])  # game_idは非表示
+            # game_idは非表示
+            df_display = df.drop(columns=["game_id"])
 
-            # データフレーム表示
-            st.dataframe(
-                df_display,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "URL": st.column_config.LinkColumn("棋譜リンク")
-                }
-            )
+            # データフレーム表示（pyarrowを使わない方法）
+            # HTMLでリンクを作成
+            def make_clickable(url):
+                return f'<a href="{url}" target="_blank" style="color: #1f77b4;">棋譜を見る</a>'
+
+            df_display_html = df_display.copy()
+            df_display_html['URL'] = df_display_html['URL'].apply(make_clickable)
+
+            # CSSスタイルを追加
+            table_style = """
+            <style>
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 14px;
+            }
+            th {
+                background-color: #f0f2f6;
+                padding: 10px;
+                text-align: left;
+                border-bottom: 2px solid #ddd;
+                font-weight: 600;
+            }
+            td {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+            tr:hover {
+                background-color: #f5f5f5;
+            }
+            </style>
+            """
+
+            # HTMLとして表示
+            st.markdown(table_style + df_display_html.to_html(escape=False, index=False), unsafe_allow_html=True)
 
             # 統計情報
             st.divider()
