@@ -217,40 +217,51 @@ if data:
             df_display = df.drop(columns=["game_id"])
 
             # データフレーム表示（pyarrowを使わない方法）
-            # HTMLでリンクを作成
-            def make_clickable(url):
-                return f'<a href="{url}" target="_blank" style="color: #1f77b4;">棋譜を見る</a>'
-
-            df_display_html = df_display.copy()
-            df_display_html['URL'] = df_display_html['URL'].apply(make_clickable)
-
             # CSSスタイルを追加
-            table_style = """
+            st.markdown("""
             <style>
-            table {
+            .game-table {
                 width: 100%;
                 border-collapse: collapse;
                 font-size: 14px;
+                margin-top: 20px;
             }
-            th {
+            .game-table th {
                 background-color: #f0f2f6;
                 padding: 10px;
                 text-align: left;
                 border-bottom: 2px solid #ddd;
                 font-weight: 600;
             }
-            td {
+            .game-table td {
                 padding: 8px;
                 border-bottom: 1px solid #eee;
             }
-            tr:hover {
+            .game-table tr:hover {
                 background-color: #f5f5f5;
             }
+            .game-table a {
+                color: #1f77b4;
+                text-decoration: none;
+            }
+            .game-table a:hover {
+                text-decoration: underline;
+            }
             </style>
-            """
+            """, unsafe_allow_html=True)
+
+            # HTMLでリンクを作成
+            def make_clickable(url):
+                return f'<a href="{url}" target="_blank">棋譜を見る</a>'
+
+            df_display_html = df_display.copy()
+            df_display_html['URL'] = df_display_html['URL'].apply(make_clickable)
+
+            # HTMLテーブルを生成
+            html_table = df_display_html.to_html(escape=False, index=False, classes='game-table')
 
             # HTMLとして表示
-            st.markdown(table_style + df_display_html.to_html(escape=False, index=False), unsafe_allow_html=True)
+            st.markdown(html_table, unsafe_allow_html=True)
 
             # 統計情報
             st.divider()
