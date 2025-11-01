@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 import json
 import re
 from typing import List, Dict, Optional
+import argparse
 from datetime import datetime
 import time
 import os
@@ -474,49 +475,65 @@ def save_to_json(data: List[Dict[str, str]], output_file: str, query_params: Dic
 
 def main():
     """
-    環境変数から設定を読み込んで実行する
+    将棋ウォーズの棋譜URLを抽出してJSONに保存
 
-    必須の環境変数:
+    環境変数:
     - SHOGIWARS_USERNAME: ログインユーザー名
     - SHOGIWARS_PASSWORD: ログインパスワード
-
-    オプションの環境変数:
     - SHOGIWARS_HEADLESS: ヘッドレスモード true/false（デフォルト: false）
     - SHOGIWARS_MANUAL_CAPTCHA: 手動CAPTCHA待機 true/false（デフォルト: false）
 
-    パラメータ設定:
-    以下のパラメータはコード内で直接設定してください
-    - opponent: 対戦相手のID（""で全対局）
-    - month: 対象月 YYYY-MM形式（Noneで現在月）
-    - gtype: ゲームタイプ None/s1/sb（Noneで10分切れ負け）
-    - limit: 取得する最大ページ数（Noneで全ページ）
-    - output_file: 出力ファイル名（Noneで自動生成）
+    コマンドライン引数またはコード内設定でスクレイピングパラメータを指定できます
     """
-    # ========================================
-    # パラメータ設定（ここを編集してください）
-    # ========================================
-    opponent = ""           # 対戦相手のID（""で全対局を取得）
-    month = None           # 対象月 YYYY-MM形式（Noneで現在月）
-    gtype = None           # ゲームタイプ: None=10分切れ負け, "s1"=1手10秒, "sb"=3分切れ負け
-    limit = None           # 取得する最大ページ数（Noneで全ページ）
-    output_file = None     # 出力ファイル名（Noneで自動生成）
-    # ========================================
-
-    # 現在の年月を取得（monthがNoneの場合に使用）
+    # 現在の年月を取得
     current_month = datetime.now().strftime("%Y-%m")
-    if month is None:
-        month = current_month
+
+    # コマンドライン引数のパーサーを設定
+    parser = argparse.ArgumentParser(
+        description="将棋ウォーズの棋譜URLを抽出してJSONに保存"
+    )
+    parser.add_argument(
+        "--opponent",
+        default="",
+        help="対戦相手のID（未指定の場合は全ての対局を取得）"
+    )
+    parser.add_argument(
+        "--month",
+        default=current_month,
+        help=f"対象月 YYYY-MM形式 (default: {current_month})"
+    )
+    parser.add_argument(
+        "--gtype",
+        default=None,
+        choices=["s1", "sb"],
+        help="ゲームタイプ: s1=1手10秒, sb=3分切れ負け (default: 10分切れ負け)"
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="取得する最大ページ数 (default: 全ページ)"
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="出力ファイル名（未指定の場合は自動生成）"
+    )
+
+    args = parser.parse_args()
+
+    # 引数から値を取得
+    opponent = args.opponent
+    month = args.month
+    gtype = args.gtype
+    limit = args.limit
+    output_file = args.output
 
     # 環境変数から認証情報と実行オプションを取得
     login_username = os.environ.get("SHOGIWARS_USERNAME")
     login_password = os.environ.get("SHOGIWARS_PASSWORD")
     headless = os.environ.get("SHOGIWARS_HEADLESS", "").lower() in ("true", "1", "yes")
     manual_captcha = os.environ.get("SHOGIWARS_MANUAL_CAPTCHA", "").lower() in ("true", "1", "yes")
-
-    # gtypeの検証
-    if gtype and gtype not in ["s1", "sb"]:
-        print(f"警告: 無効なゲームタイプ '{gtype}' が指定されました。有効な値: s1, sb, または None")
-        return
 
     # 認証情報が設定されていない場合は対話的に入力を求める
     if not login_username:

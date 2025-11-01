@@ -79,28 +79,20 @@ python scrape_shogiwars.py
 - `SHOGIWARS_HEADLESS`: ヘッドレスモードで実行（`true`/`false`、デフォルト: `false`）
 - `SHOGIWARS_MANUAL_CAPTCHA`: CAPTCHAを手動で完了するモード（`true`/`false`、デフォルト: `false`）
 
-#### コード内設定（スクレイピングパラメータ）
+#### コマンドライン引数（スクレイピングパラメータ）
 
-スクレイピングパラメータは `scrape_shogiwars.py` の `main()` 関数内で直接設定します：
+スクレイピングパラメータはコマンドライン引数で指定します：
 
-```python
-# ========================================
-# パラメータ設定（ここを編集してください）
-# ========================================
-opponent = ""           # 対戦相手のID（""で全対局を取得）
-month = None           # 対象月 YYYY-MM形式（Noneで現在月）
-gtype = None           # ゲームタイプ: None=10分切れ負け, "s1"=1手10秒, "sb"=3分切れ負け
-limit = None           # 取得する最大ページ数（Noneで全ページ）
-output_file = None     # 出力ファイル名（Noneで自動生成）
-# ========================================
+```bash
+python scrape_shogiwars.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
 ```
 
-**パラメータの説明:**
-- `opponent`: 対戦相手のID（`""` で全対局を取得）
-- `month`: 対象月（YYYY-MM形式、`None` で現在月）
-- `gtype`: ゲームタイプ（`None`=10分切れ負け、`"s1"`=1手10秒、`"sb"`=3分切れ負け）
-- `limit`: 取得する最大ページ数（`None` で全ページ）
-- `output_file`: 出力JSONファイル名（`None` で自動生成）
+**利用可能な引数:**
+- `--opponent`: 対戦相手のID（未指定の場合は全対局を取得）
+- `--month`: 対象月（YYYY-MM形式、デフォルト: 現在月）
+- `--gtype`: ゲームタイプ（`s1`=1手10秒、`sb`=3分切れ負け、未指定=10分切れ負け）
+- `--limit`: 取得する最大ページ数（未指定の場合は全ページ）
+- `--output`: 出力ファイル名（未指定の場合は自動生成）
 
 **ファイル名の自動生成ルール:**
 - デフォルトでは `result/` ディレクトリに保存されます
@@ -211,85 +203,46 @@ python scrape_shogiwars.py
 
 ### 2024年10月の全対局を抽出（1手10秒）
 
-`scrape_shogiwars.py` を編集：
-
-```python
-opponent = ""
-month = "2024-10"
-gtype = "s1"
-limit = None
-output_file = None
-```
-
-実行：
-
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py
+python scrape_shogiwars.py --gtype s1 --month 2024-10
 # 出力: result/game_replays_s1_2024-10_ohakado.json
 ```
 
-### 最初の3ページだけ取得
-
-`scrape_shogiwars.py` を編集：
-
-```python
-opponent = ""
-month = None
-gtype = "s1"
-limit = 3
-output_file = None
-```
-
-実行：
+### 最初の100ページだけ取得
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py
+python scrape_shogiwars.py --gtype s1 --limit 100
 # 出力: result/game_replays_s1_2025-11_ohakado.json
 ```
 
 ### 特定の対戦相手との対局を抽出
 
-`scrape_shogiwars.py` を編集：
-
-```python
-opponent = "odakaho"
-month = None
-gtype = "s1"
-limit = None
-output_file = None
+```bash
+export SHOGIWARS_USERNAME="your_username"
+export SHOGIWARS_PASSWORD="your_password"
+python scrape_shogiwars.py --opponent "odakaho" --gtype s1
+# 出力: result/game_replays_s1_2025-11_ohakado_odakaho.json
 ```
 
-実行：
+### すべての引数を指定
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py
-# 出力: result/game_replays_s1_2025-11_ohakado_odakaho.json
+python scrape_shogiwars.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
+# 出力: result/game_replays_s1_2024-10_ohakado_odakaho.json
 ```
 
 ### カスタムファイル名を指定
 
-`scrape_shogiwars.py` を編集：
-
-```python
-opponent = "odakaho"
-month = None
-gtype = None
-limit = None
-output_file = "my_games.json"
-```
-
-実行：
-
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py
+python scrape_shogiwars.py --opponent "odakaho" --output my_games.json
 # 出力: my_games.json (カレントディレクトリ)
 ```
 
