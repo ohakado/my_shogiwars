@@ -65,36 +65,51 @@ python scrape_shogiwars.py
 - 対戦相手: 未指定（全ての対局を取得）
 - 対象月: 現在月（YYYY-MM形式で自動設定）
 - ゲームタイプ: 無指定 (10分切れ負け)
-- 出力ファイル: `result/game_replays_[gtype]_[month]_[user_id].json` 形式で自動生成
+- 出力ファイル: `result/game_replays_[gtype]_[month]_[user].json` 形式で自動生成
 
-### 環境変数での設定
+### パラメータ設定
 
-すべての設定は環境変数で行います。
+#### 環境変数（認証情報と実行オプション）
 
-#### 必須の環境変数
+**必須の環境変数:**
 - `SHOGIWARS_USERNAME`: 将棋ウォーズのログインユーザー名
 - `SHOGIWARS_PASSWORD`: 将棋ウォーズのログインパスワード
 
-#### オプションの環境変数
-- `SHOGIWARS_OPPONENT`: 対戦相手のID（デフォルト: ""=全ての対局を取得）
-- `SHOGIWARS_MONTH`: 対象月（YYYY-MM形式、デフォルト: 現在月）
-- `SHOGIWARS_GTYPE`: ゲームタイプ（デフォルト: 未指定=10分切れ負け）
-  - 未指定: 10分切れ負け
-  - `s1`: 1手10秒
-  - `sb`: 3分切れ負け
-- `SHOGIWARS_LIMIT`: 取得する最大ページ数（デフォルト: 全ページ）
-- `SHOGIWARS_OUTPUT`: 出力JSONファイル名（デフォルト: 自動生成）
+**オプションの環境変数:**
 - `SHOGIWARS_HEADLESS`: ヘッドレスモードで実行（`true`/`false`、デフォルト: `false`）
 - `SHOGIWARS_MANUAL_CAPTCHA`: CAPTCHAを手動で完了するモード（`true`/`false`、デフォルト: `false`）
 
-**ファイル名の自動生成ルール**:
+#### コード内設定（スクレイピングパラメータ）
+
+スクレイピングパラメータは `scrape_shogiwars.py` の `main()` 関数内で直接設定します：
+
+```python
+# ========================================
+# パラメータ設定（ここを編集してください）
+# ========================================
+opponent = ""           # 対戦相手のID（""で全対局を取得）
+month = None           # 対象月 YYYY-MM形式（Noneで現在月）
+gtype = None           # ゲームタイプ: None=10分切れ負け, "s1"=1手10秒, "sb"=3分切れ負け
+limit = None           # 取得する最大ページ数（Noneで全ページ）
+output_file = None     # 出力ファイル名（Noneで自動生成）
+# ========================================
+```
+
+**パラメータの説明:**
+- `opponent`: 対戦相手のID（`""` で全対局を取得）
+- `month`: 対象月（YYYY-MM形式、`None` で現在月）
+- `gtype`: ゲームタイプ（`None`=10分切れ負け、`"s1"`=1手10秒、`"sb"`=3分切れ負け）
+- `limit`: 取得する最大ページ数（`None` で全ページ）
+- `output_file`: 出力JSONファイル名（`None` で自動生成）
+
+**ファイル名の自動生成ルール:**
 - デフォルトでは `result/` ディレクトリに保存されます
 - 対戦相手未指定: `result/game_replays_[gtype]_[month]_[user].json`
   - 例: `result/game_replays_s1_2024-10_ohakado.json`
 - 対戦相手指定: `result/game_replays_[gtype]_[month]_[user]_[opponent].json`
   - 例: `result/game_replays_s1_2024-10_ohakado_odakaho.json`
 
-**注意**:
+**注意:**
 - ユーザーIDは、ログイン後に自動的に検出されます
 
 ## ディレクトリ構造
@@ -183,58 +198,110 @@ JSONファイルには以下の形式でデータが保存されます:
 
 ## 使用例
 
-### ヘッドレスモードで実行
+### デフォルト設定で実行
+
+認証情報のみ設定して実行（全対局、現在月、10分切れ負け）：
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-export SHOGIWARS_HEADLESS="true"
 python scrape_shogiwars.py
 # 出力: result/game_replays_10min_2025-11_ohakado.json
 ```
 
 ### 2024年10月の全対局を抽出（1手10秒）
 
+`scrape_shogiwars.py` を編集：
+
+```python
+opponent = ""
+month = "2024-10"
+gtype = "s1"
+limit = None
+output_file = None
+```
+
+実行：
+
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-export SHOGIWARS_MONTH="2024-10"
-export SHOGIWARS_GTYPE="s1"
 python scrape_shogiwars.py
 # 出力: result/game_replays_s1_2024-10_ohakado.json
 ```
 
 ### 最初の3ページだけ取得
 
+`scrape_shogiwars.py` を編集：
+
+```python
+opponent = ""
+month = None
+gtype = "s1"
+limit = 3
+output_file = None
+```
+
+実行：
+
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-export SHOGIWARS_LIMIT="3"
-export SHOGIWARS_GTYPE="s1"
 python scrape_shogiwars.py
 # 出力: result/game_replays_s1_2025-11_ohakado.json
 ```
 
 ### 特定の対戦相手との対局を抽出
 
+`scrape_shogiwars.py` を編集：
+
+```python
+opponent = "odakaho"
+month = None
+gtype = "s1"
+limit = None
+output_file = None
+```
+
+実行：
+
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-export SHOGIWARS_OPPONENT="odakaho"
-export SHOGIWARS_GTYPE="s1"
 python scrape_shogiwars.py
 # 出力: result/game_replays_s1_2025-11_ohakado_odakaho.json
 ```
 
 ### カスタムファイル名を指定
 
+`scrape_shogiwars.py` を編集：
+
+```python
+opponent = "odakaho"
+month = None
+gtype = None
+limit = None
+output_file = "my_games.json"
+```
+
+実行：
+
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-export SHOGIWARS_OPPONENT="odakaho"
-export SHOGIWARS_OUTPUT="my_games.json"
 python scrape_shogiwars.py
 # 出力: my_games.json (カレントディレクトリ)
+```
+
+### ヘッドレスモードで実行
+
+ブラウザを表示せずに実行：
+
+```bash
+export SHOGIWARS_USERNAME="your_username"
+export SHOGIWARS_PASSWORD="your_password"
+export SHOGIWARS_HEADLESS="true"
+python scrape_shogiwars.py
 ```
 
 ### ブラウザを表示してデバッグ

@@ -481,32 +481,41 @@ def main():
     - SHOGIWARS_PASSWORD: ログインパスワード
 
     オプションの環境変数:
-    - SHOGIWARS_OPPONENT: 対戦相手のID（デフォルト: ""=全対局）
-    - SHOGIWARS_MONTH: 対象月 YYYY-MM形式（デフォルト: 現在月）
-    - SHOGIWARS_GTYPE: ゲームタイプ s1/sb/なし（デフォルト: なし=10分切れ負け）
-    - SHOGIWARS_LIMIT: 取得する最大ページ数（デフォルト: なし=全ページ）
-    - SHOGIWARS_OUTPUT: 出力ファイル名（デフォルト: 自動生成）
     - SHOGIWARS_HEADLESS: ヘッドレスモード true/false（デフォルト: false）
     - SHOGIWARS_MANUAL_CAPTCHA: 手動CAPTCHA待機 true/false（デフォルト: false）
-    """
-    # 現在の年月を取得
-    current_month = datetime.now().strftime("%Y-%m")
 
-    # 環境変数から設定を取得
+    パラメータ設定:
+    以下のパラメータはコード内で直接設定してください
+    - opponent: 対戦相手のID（""で全対局）
+    - month: 対象月 YYYY-MM形式（Noneで現在月）
+    - gtype: ゲームタイプ None/s1/sb（Noneで10分切れ負け）
+    - limit: 取得する最大ページ数（Noneで全ページ）
+    - output_file: 出力ファイル名（Noneで自動生成）
+    """
+    # ========================================
+    # パラメータ設定（ここを編集してください）
+    # ========================================
+    opponent = ""           # 対戦相手のID（""で全対局を取得）
+    month = None           # 対象月 YYYY-MM形式（Noneで現在月）
+    gtype = None           # ゲームタイプ: None=10分切れ負け, "s1"=1手10秒, "sb"=3分切れ負け
+    limit = None           # 取得する最大ページ数（Noneで全ページ）
+    output_file = None     # 出力ファイル名（Noneで自動生成）
+    # ========================================
+
+    # 現在の年月を取得（monthがNoneの場合に使用）
+    current_month = datetime.now().strftime("%Y-%m")
+    if month is None:
+        month = current_month
+
+    # 環境変数から認証情報と実行オプションを取得
     login_username = os.environ.get("SHOGIWARS_USERNAME")
     login_password = os.environ.get("SHOGIWARS_PASSWORD")
-    opponent = os.environ.get("SHOGIWARS_OPPONENT", "")
-    month = os.environ.get("SHOGIWARS_MONTH", current_month)
-    gtype = os.environ.get("SHOGIWARS_GTYPE") or None  # 空文字列の場合はNone
-    limit_str = os.environ.get("SHOGIWARS_LIMIT")
-    limit = int(limit_str) if limit_str else None
-    output_file = os.environ.get("SHOGIWARS_OUTPUT") or None
     headless = os.environ.get("SHOGIWARS_HEADLESS", "").lower() in ("true", "1", "yes")
     manual_captcha = os.environ.get("SHOGIWARS_MANUAL_CAPTCHA", "").lower() in ("true", "1", "yes")
 
     # gtypeの検証
     if gtype and gtype not in ["s1", "sb"]:
-        print(f"警告: 無効なゲームタイプ '{gtype}' が指定されました。有効な値: s1, sb, または未指定")
+        print(f"警告: 無効なゲームタイプ '{gtype}' が指定されました。有効な値: s1, sb, または None")
         return
 
     # 認証情報が設定されていない場合は対話的に入力を求める
