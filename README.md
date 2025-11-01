@@ -92,7 +92,7 @@ python scrape_shogiwars.py
 - 対戦相手未指定: `result/game_replays_[gtype]_[month]_[user_id].json`
   - 例: `result/game_replays_s1_2024-10_ohakado.json`
 - 対戦相手指定: `result/game_replays_[gtype]_[month]_[user_id]_[opponent].json`
-  - 例: `result/game_replays_s1_2024-10_ohakado_Walprgis.json`
+  - 例: `result/game_replays_s1_2024-10_ohakado_odakaho.json`
 
 **注意**:
 - ユーザーIDは、ログイン後に自動的に検出されます
@@ -220,10 +220,10 @@ python scrape_shogiwars.py
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-export SHOGIWARS_OPPONENT="Walprgis"
+export SHOGIWARS_OPPONENT="odakaho"
 export SHOGIWARS_GTYPE="s1"
 python scrape_shogiwars.py
-# 出力: result/game_replays_s1_2025-11_ohakado_Walprgis.json
+# 出力: result/game_replays_s1_2025-11_ohakado_odakaho.json
 ```
 
 ### カスタムファイル名を指定
@@ -231,7 +231,7 @@ python scrape_shogiwars.py
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-export SHOGIWARS_OPPONENT="Walprgis"
+export SHOGIWARS_OPPONENT="odakaho"
 export SHOGIWARS_OUTPUT="my_games.json"
 python scrape_shogiwars.py
 # 出力: my_games.json (カレントディレクトリ)
