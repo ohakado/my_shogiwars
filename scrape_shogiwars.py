@@ -14,7 +14,6 @@ from bs4 import BeautifulSoup
 import json
 import re
 from typing import List, Dict, Optional
-import argparse
 from datetime import datetime
 import time
 import os
@@ -474,63 +473,41 @@ def save_to_json(data: List[Dict[str, str]], output_file: str, query_params: Dic
 
 
 def main():
+    """
+    環境変数から設定を読み込んで実行する
+
+    必須の環境変数:
+    - SHOGIWARS_USERNAME: ログインユーザー名
+    - SHOGIWARS_PASSWORD: ログインパスワード
+
+    オプションの環境変数:
+    - SHOGIWARS_OPPONENT: 対戦相手のID（デフォルト: ""=全対局）
+    - SHOGIWARS_MONTH: 対象月 YYYY-MM形式（デフォルト: 現在月）
+    - SHOGIWARS_GTYPE: ゲームタイプ s1/sb/なし（デフォルト: なし=10分切れ負け）
+    - SHOGIWARS_MAX_PAGES: 取得する最大ページ数（デフォルト: なし=全ページ）
+    - SHOGIWARS_OUTPUT: 出力ファイル名（デフォルト: 自動生成）
+    - SHOGIWARS_HEADLESS: ヘッドレスモード true/false（デフォルト: false）
+    - SHOGIWARS_MANUAL_CAPTCHA: 手動CAPTCHA待機 true/false（デフォルト: false）
+    """
     # 現在の年月を取得
     current_month = datetime.now().strftime("%Y-%m")
 
-    parser = argparse.ArgumentParser(
-        description="将棋ウォーズの棋譜URLを抽出してJSONに保存（ログイン対応版）"
-    )
-    parser.add_argument(
-        "--login-user",
-        help="将棋ウォーズのログインユーザー名（環境変数 SHOGIWARS_USERNAME からも取得可能）"
-    )
-    parser.add_argument(
-        "--login-password",
-        help="将棋ウォーズのログインパスワード（環境変数 SHOGIWARS_PASSWORD からも取得可能）"
-    )
-    parser.add_argument(
-        "--opponent",
-        default="",
-        help="対戦相手のID（未指定の場合は全ての対局を取得）"
-    )
-    parser.add_argument(
-        "--month",
-        default=current_month,
-        help=f"対象月 YYYY-MM形式 (default: {current_month})"
-    )
-    parser.add_argument(
-        "--gtype",
-        default=None,
-        choices=["s1", "sb", None],
-        help="ゲームタイプ: 無指定=10分切れ負け, s1=1手10秒, sb=3分切れ負け (default: 無指定)"
-    )
-    parser.add_argument(
-        "--max-pages",
-        type=int,
-        default=None,
-        help="取得する最大ページ数 (default: 全ページ)"
-    )
-    parser.add_argument(
-        "--output",
-        default=None,
-        help="出力ファイル名（未指定の場合は game_replays_[gtype]_[month]_[user_id]_[opponent].json）"
-    )
-    parser.add_argument(
-        "--headless",
-        action="store_true",
-        help="ヘッドレスモードで実行（ブラウザを表示しない）"
-    )
-    parser.add_argument(
-        "--manual-captcha",
-        action="store_true",
-        help="CAPTCHAを手動で完了できるように待機する（推奨）"
-    )
+    # 環境変数から設定を取得
+    login_username = os.environ.get("SHOGIWARS_USERNAME")
+    login_password = os.environ.get("SHOGIWARS_PASSWORD")
+    opponent = os.environ.get("SHOGIWARS_OPPONENT", "")
+    month = os.environ.get("SHOGIWARS_MONTH", current_month)
+    gtype = os.environ.get("SHOGIWARS_GTYPE") or None  # 空文字列の場合はNone
+    max_pages_str = os.environ.get("SHOGIWARS_MAX_PAGES")
+    max_pages = int(max_pages_str) if max_pages_str else None
+    output_file = os.environ.get("SHOGIWARS_OUTPUT") or None
+    headless = os.environ.get("SHOGIWARS_HEADLESS", "").lower() in ("true", "1", "yes")
+    manual_captcha = os.environ.get("SHOGIWARS_MANUAL_CAPTCHA", "").lower() in ("true", "1", "yes")
 
-    args = parser.parse_args()
-
-    # ログイン認証情報を取得
-    login_username = args.login_user or os.environ.get("SHOGIWARS_USERNAME")
-    login_password = args.login_password or os.environ.get("SHOGIWARS_PASSWORD")
+    # gtypeの検証
+    if gtype and gtype not in ["s1", "sb"]:
+        print(f"警告: 無効なゲームタイプ '{gtype}' が指定されました。有効な値: s1, sb, または未指定")
+        return
 
     # 認証情報が設定されていない場合は対話的に入力を求める
     if not login_username:
@@ -540,7 +517,7 @@ def main():
 
     # WebDriverの初期化（undetected_chromedriverを使用）
     options = uc.ChromeOptions()
-    if args.headless:
+    if headless:
         options.add_argument("--headless=new")
 
     # 基本的な設定
@@ -554,7 +531,7 @@ def main():
         driver = uc.Chrome(options=options, version_main=None)
 
         # ログイン
-        login_success, user_id = login_to_shogiwars(driver, login_username, login_password, manual_captcha=args.manual_captcha)
+        login_success, user_id = login_to_shogiwars(driver, login_username, login_password, manual_captcha=manual_captcha)
         if not login_success:
             print("ログインに失敗しました。")
             return
@@ -566,50 +543,50 @@ def main():
         print(f"\n=== Scraping game history for user: {user_id} ===\n")
 
         # 出力ファイル名を生成（未指定の場合）
-        if args.output is None:
+        if output_file is None:
             # resultディレクトリを作成（存在しない場合）
             result_dir = "result"
             os.makedirs(result_dir, exist_ok=True)
 
             # gtypeの文字列表現
-            gtype_str = args.gtype if args.gtype else "10min"
+            gtype_str = gtype if gtype else "10min"
             # ファイル名を生成
-            if args.opponent:
+            if opponent:
                 # 対戦相手が指定されている場合
-                filename = f"game_replays_{gtype_str}_{args.month}_{user_id}_{args.opponent}.json"
+                filename = f"game_replays_{gtype_str}_{month}_{user_id}_{opponent}.json"
             else:
                 # 対戦相手が未指定（全検索）の場合
-                filename = f"game_replays_{gtype_str}_{args.month}_{user_id}.json"
+                filename = f"game_replays_{gtype_str}_{month}_{user_id}.json"
 
             output_filename = os.path.join(result_dir, filename)
             print(f"Output file: {output_filename}")
         else:
-            output_filename = args.output
+            output_filename = output_file
 
         # 棋譜URLを抽出
         game_urls = scrape_game_urls(
             driver=driver,
             user_id=user_id,
-            opponent=args.opponent,
-            month=args.month,
-            gtype=args.gtype,
-            max_pages=args.max_pages
+            opponent=opponent,
+            month=month,
+            gtype=gtype,
+            max_pages=max_pages
         )
 
         if game_urls:
             # 検索パラメータを記録
             query_params = {
                 "user_id": user_id,
-                "opponent": args.opponent if args.opponent else "(all)",
-                "month": args.month,
-                "gtype": args.gtype if args.gtype else "10min",
-                "max_pages": args.max_pages if args.max_pages else "(all)"
+                "opponent": opponent if opponent else "(all)",
+                "month": month,
+                "gtype": gtype if gtype else "10min",
+                "max_pages": max_pages if max_pages else "(all)"
             }
 
             # JSONに保存
             save_to_json(game_urls, output_filename, query_params)
         else:
-            print(f"\nNo games found with opponent: {args.opponent}")
+            print(f"\nNo games found with opponent: {opponent}")
 
     except Exception as e:
         print(f"Error: {e}")

@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ### ログイン認証の設定
 
-このスクリプトは将棋ウォーズへのログインが必要です。認証情報は以下の3つの方法で設定できます：
+このスクリプトは将棋ウォーズへのログインが必要です。認証情報は以下の2つの方法で設定できます：
 
 #### 1. 環境変数を使用（推奨）
 
@@ -38,13 +38,7 @@ export SHOGIWARS_PASSWORD="your_password"
 python scrape_shogiwars.py
 ```
 
-#### 2. コマンドライン引数で指定
-
-```bash
-python scrape_shogiwars.py --login-user your_username --login-password your_password
-```
-
-#### 3. 対話的に入力
+#### 2. 対話的に入力
 
 認証情報を指定せずに実行すると、プロンプトでユーザー名とパスワードの入力を求められます：
 
@@ -58,6 +52,10 @@ python scrape_shogiwars.py
 # 仮想環境を使用している場合は先に有効化
 source venv/bin/activate
 
+# 環境変数を設定
+export SHOGIWARS_USERNAME="your_username"
+export SHOGIWARS_PASSWORD="your_password"
+
 # スクリプトを実行
 python scrape_shogiwars.py
 ```
@@ -67,33 +65,27 @@ python scrape_shogiwars.py
 - 対戦相手: 未指定（全ての対局を取得）
 - 対象月: 現在月（YYYY-MM形式で自動設定）
 - ゲームタイプ: 無指定 (10分切れ負け)
-- 出力ファイル: `game_replays_[gtype]_[month]_[user_id].json` 形式で自動生成
+- 出力ファイル: `result/game_replays_[gtype]_[month]_[user_id].json` 形式で自動生成
 
-### オプション指定
+### 環境変数での設定
 
-```bash
-python scrape_shogiwars.py \
-  --opponent opponent_id \
-  --month 2024-10 \
-  --gtype s1 \
-  --output my_games.json
-```
+すべての設定は環境変数で行います。
 
-### パラメータ
+#### 必須の環境変数
+- `SHOGIWARS_USERNAME`: 将棋ウォーズのログインユーザー名
+- `SHOGIWARS_PASSWORD`: 将棋ウォーズのログインパスワード
 
-#### ログイン関連
-- `--login-user`: 将棋ウォーズのログインユーザー名（環境変数 `SHOGIWARS_USERNAME` からも取得可能）
-- `--login-password`: 将棋ウォーズのログインパスワード（環境変数 `SHOGIWARS_PASSWORD` からも取得可能）
-
-#### スクレイピング設定
-- `--opponent`: 対戦相手のID（未指定の場合は全ての対局を取得）
-- `--month`: 対象月（YYYY-MM形式、デフォルト: 現在月）
-- `--gtype`: ゲームタイプ
-  - 無指定: 10分切れ負け（デフォルト）
+#### オプションの環境変数
+- `SHOGIWARS_OPPONENT`: 対戦相手のID（デフォルト: ""=全ての対局を取得）
+- `SHOGIWARS_MONTH`: 対象月（YYYY-MM形式、デフォルト: 現在月）
+- `SHOGIWARS_GTYPE`: ゲームタイプ（デフォルト: 未指定=10分切れ負け）
+  - 未指定: 10分切れ負け
   - `s1`: 1手10秒
   - `sb`: 3分切れ負け
-- `--max-pages`: 取得する最大ページ数（デフォルト: 全ページ）
-- `--output`: 出力JSONファイル名（未指定の場合は自動生成）
+- `SHOGIWARS_MAX_PAGES`: 取得する最大ページ数（デフォルト: 全ページ）
+- `SHOGIWARS_OUTPUT`: 出力JSONファイル名（デフォルト: 自動生成）
+- `SHOGIWARS_HEADLESS`: ヘッドレスモードで実行（`true`/`false`、デフォルト: `false`）
+- `SHOGIWARS_MANUAL_CAPTCHA`: CAPTCHAを手動で完了するモード（`true`/`false`、デフォルト: `false`）
 
 **ファイル名の自動生成ルール**:
 - デフォルトでは `result/` ディレクトリに保存されます
@@ -103,10 +95,7 @@ python scrape_shogiwars.py \
   - 例: `result/game_replays_s1_2024-10_ohakado_Walprgis.json`
 
 **注意**:
-- ユーザーIDは、ログイン後に自動的に検出されます。`--user-id`パラメータは不要です。
-
-#### ブラウザ設定
-- `--headless`: ヘッドレスモードで実行（ブラウザウィンドウを表示しない）
+- ユーザーIDは、ログイン後に自動的に検出されます
 
 ## ディレクトリ構造
 
@@ -194,48 +183,67 @@ JSONファイルには以下の形式でデータが保存されます:
 
 ## 使用例
 
-### 環境変数を使用してヘッドレスモードで実行
+### ヘッドレスモードで実行
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py --headless
-# 出力: result/game_replays_10min_2025-10_ohakado.json
+export SHOGIWARS_HEADLESS="true"
+python scrape_shogiwars.py
+# 出力: result/game_replays_10min_2025-11_ohakado.json
 ```
 
 ### 2024年10月の全対局を抽出（1手10秒）
 
 ```bash
-python scrape_shogiwars.py --month 2024-10 --gtype s1
+export SHOGIWARS_USERNAME="your_username"
+export SHOGIWARS_PASSWORD="your_password"
+export SHOGIWARS_MONTH="2024-10"
+export SHOGIWARS_GTYPE="s1"
+python scrape_shogiwars.py
 # 出力: result/game_replays_s1_2024-10_ohakado.json
 ```
 
 ### 最初の3ページだけ取得
 
 ```bash
-python scrape_shogiwars.py --max-pages 3 --gtype s1
-# 出力: result/game_replays_s1_2025-10_ohakado.json
+export SHOGIWARS_USERNAME="your_username"
+export SHOGIWARS_PASSWORD="your_password"
+export SHOGIWARS_MAX_PAGES="3"
+export SHOGIWARS_GTYPE="s1"
+python scrape_shogiwars.py
+# 出力: result/game_replays_s1_2025-11_ohakado.json
 ```
 
 ### 特定の対戦相手との対局を抽出
 
 ```bash
-python scrape_shogiwars.py --opponent Walprgis --gtype s1
-# 出力: result/game_replays_s1_2025-10_ohakado_Walprgis.json
+export SHOGIWARS_USERNAME="your_username"
+export SHOGIWARS_PASSWORD="your_password"
+export SHOGIWARS_OPPONENT="Walprgis"
+export SHOGIWARS_GTYPE="s1"
+python scrape_shogiwars.py
+# 出力: result/game_replays_s1_2025-11_ohakado_Walprgis.json
 ```
 
 ### カスタムファイル名を指定
 
 ```bash
-python scrape_shogiwars.py --opponent Walprgis --output my_games.json
+export SHOGIWARS_USERNAME="your_username"
+export SHOGIWARS_PASSWORD="your_password"
+export SHOGIWARS_OPPONENT="Walprgis"
+export SHOGIWARS_OUTPUT="my_games.json"
+python scrape_shogiwars.py
 # 出力: my_games.json (カレントディレクトリ)
 ```
 
 ### ブラウザを表示してデバッグ
 
-ログインプロセスを確認したい場合は、`--headless` オプションを外して実行してください：
+ログインプロセスを確認したい場合は、`SHOGIWARS_HEADLESS` を設定せずに実行してください（デフォルトでブラウザが表示されます）：
 
 ```bash
+export SHOGIWARS_USERNAME="your_username"
+export SHOGIWARS_PASSWORD="your_password"
 python scrape_shogiwars.py
 ```
 
@@ -252,7 +260,7 @@ pip install webdriver-manager
 ### ログインに失敗する
 
 1. ユーザー名とパスワードが正しいか確認してください
-2. ブラウザを表示して確認：`--headless` オプションを外して実行
+2. ブラウザを表示して確認：`SHOGIWARS_HEADLESS` を設定せずに実行（デフォルトでブラウザが表示されます）
 3. 将棋ウォーズのログインページの構造が変更されている可能性があります。その場合は `login_to_shogiwars` 関数を更新する必要があります
 
 ### ページが見つからない
