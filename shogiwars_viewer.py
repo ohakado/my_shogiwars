@@ -62,13 +62,20 @@ if result_dir.exists():
         try:
             with open(json_file, "r", encoding="utf-8") as f:
                 file_data = json.load(f)
+                params = file_data.get("params", {})
                 replays = file_data.get("replays", [])
+
+                # 各replayにparamsの情報を付与
+                for replay in replays:
+                    replay["_opponent_type"] = params.get("opponent_type", "normal")
+                    replay["_init_pos_type"] = params.get("init_pos_type", "normal")
+                    replay["_gtype"] = params.get("gtype", "10min")
+
                 all_replays.extend(replays)
                 loaded_files.append(json_file.name)
 
                 # 最初のファイルからユーザー名を取得
                 if user_name is None:
-                    params = file_data.get("params", {})
                     user_name = params.get("user", "")
         except Exception as e:
             st.sidebar.warning(f"⚠️ {json_file.name} の読み込みに失敗: {e}")
@@ -95,6 +102,46 @@ if all_replays:
 
         # フィルター
         st.subheader("フィルター")
+
+        # 対局相手タイプ、初期配置タイプ、持ち時間フィルター
+        col_type1, col_type2, col_type3 = st.columns(3)
+
+        with col_type1:
+            opponent_type_filter = st.selectbox(
+                "対局相手タイプ",
+                ["normal", "friend", "coach", "closed_event", "learning"],
+                format_func=lambda x: {
+                    "normal": "ランク",
+                    "friend": "友達",
+                    "coach": "指導",
+                    "closed_event": "大会",
+                    "learning": "ラーニング"
+                }[x],
+                index=0  # デフォルト: ランク
+            )
+
+        with col_type2:
+            init_pos_type_filter = st.selectbox(
+                "初期配置タイプ",
+                ["normal", "sprint"],
+                format_func=lambda x: {
+                    "normal": "通常",
+                    "sprint": "スプリント"
+                }[x],
+                index=0  # デフォルト: 通常
+            )
+
+        with col_type3:
+            gtype_filter = st.selectbox(
+                "持ち時間",
+                ["s1", "sb", "10min"],
+                format_func=lambda x: {
+                    "s1": "10秒",
+                    "sb": "3分",
+                    "10min": "10分"
+                }[x],
+                index=0  # デフォルト: 10秒
+            )
 
         # 日付範囲の取得（全対局から）
         all_dates = []
@@ -218,6 +265,14 @@ if all_replays:
             st.warning("ユーザー名が取得できませんでした")
         else:
             for replay in replays:
+                # 対局相手タイプ、初期配置タイプ、持ち時間でフィルター
+                if replay.get("_opponent_type") != opponent_type_filter:
+                    continue
+                if replay.get("_init_pos_type") != init_pos_type_filter:
+                    continue
+                if replay.get("_gtype") != gtype_filter:
+                    continue
+
                 sente = replay.get("sente", {})
                 gote = replay.get("gote", {})
 
@@ -310,7 +365,31 @@ if all_replays:
                         pass
 
             st.divider()
-            st.subheader("📈 統計")
+
+            # フィルター条件を日本語に変換
+            opponent_type_label = {
+                "normal": "ランク",
+                "friend": "友達",
+                "coach": "指導",
+                "closed_event": "大会",
+                "learning": "ラーニング"
+            }[opponent_type_filter]
+
+            init_pos_type_label = {
+                "normal": "通常",
+                "sprint": "スプリント"
+            }[init_pos_type_filter]
+
+            gtype_label = {
+                "s1": "10秒",
+                "sb": "3分",
+                "10min": "10分"
+            }[gtype_filter]
+
+            # 日付範囲のフォーマット
+            date_range_str = f"{start_date} - {end_date}" if start_date and end_date else ""
+
+            st.subheader(f"📈 統計 ({opponent_type_label} / {init_pos_type_label} / {gtype_label} / {date_range_str})")
 
             col1, col2, col3, col4 = st.columns(4)
 
