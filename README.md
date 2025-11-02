@@ -15,22 +15,30 @@
 
 ## 必要要件
 
-- Python 3.8以降
+- Python 3.9以降（Python 3.13推奨）
 - Google Chrome（ChromeDriverは自動的にインストールされます）
 
 ## インストール
 
-Python 3.8以降では外部管理環境のため、仮想環境を使用します：
+Python 3.9以降では外部管理環境のため、仮想環境を使用します：
 
 ```bash
-# 仮想環境を作成
+# 仮想環境を作成（Python 3.9以降が必要）
 python3 -m venv venv
 
 # 仮想環境を有効化
 source venv/bin/activate
 
+# pipのアップグレード
+pip install --upgrade pip
+
 # パッケージをインストール
 pip install -r requirements.txt
+```
+
+**注意:** macOSやローカル環境では`python3`コマンドが使用されますが、Python 3.9以降であることを確認してください：
+```bash
+python3 --version  # Python 3.9以降であることを確認
 ```
 
 ## 使い方
@@ -365,3 +373,171 @@ streamlit run shogiwars_viewer.py
 
 - サイドバー: JSONファイルの選択
 - メインエリア: 検索パラメータ、対局一覧、統計情報
+
+---
+
+## Lightsail (Amazon Linux 2023) へのデプロイ
+
+### 前提条件
+
+- AWS Lightsailインスタンスが起動していること
+- インスタンスのファイアウォールでポート8501が開放されていること
+- SSHでインスタンスにアクセスできること
+
+### デプロイスクリプトを使用する方法（推奨）
+
+ローカル環境から`deploy.sh`スクリプトを使用すると、デプロイを自動化できます：
+
+```bash
+# スクリプトに実行権限を付与
+chmod +x deploy.sh
+
+# 初回デプロイ
+./deploy.sh <your-lightsail-ip> --setup
+
+# コードの更新
+./deploy.sh <your-lightsail-ip> --update
+
+# JSONファイルのアップロード
+./deploy.sh <your-lightsail-ip> --upload-json
+```
+
+**注意:** 初回デプロイ時にGitリポジトリのURLを入力するか、手動でコードをアップロードしてください。
+
+### 手動デプロイ手順
+
+デプロイスクリプトを使用しない場合は、以下の手順で手動デプロイできます：
+
+#### 1. Lightsailインスタンスに接続
+
+```bash
+ssh ec2-user@<your-lightsail-ip>
+```
+
+#### 2. 必要なパッケージをインストール
+
+```bash
+# システムパッケージの更新
+sudo dnf update -y
+
+# Python 3.13とgitのインストール
+sudo dnf install -y python3.13 python3.13-pip git
+
+# 開発ツールのインストール（pyarrow等のビルドに必要）
+sudo dnf groupinstall -y "Development Tools"
+```
+
+#### 3. リポジトリをクローン
+
+```bash
+cd ~
+git clone <your-repository-url> my_shogiwars
+cd my_shogiwars
+```
+
+#### 4. 仮想環境を作成してパッケージをインストール
+
+```bash
+# 仮想環境の作成（Python 3.13を使用）
+python3.13 -m venv venv
+
+# 仮想環境の有効化
+source venv/bin/activate
+
+# pipのアップグレード
+pip install --upgrade pip
+
+# パッケージのインストール
+pip install -r requirements.txt
+```
+
+#### 5. resultディレクトリを作成してJSONファイルを配置
+
+```bash
+# resultディレクトリを作成
+mkdir -p result
+
+# ローカルからJSONファイルをアップロード（ローカル端末で実行）
+scp result/*.json ec2-user@<your-lightsail-ip>:~/my_shogiwars/result/
+```
+
+#### 6. systemdサービスを設定
+
+```bash
+# サービスファイルをsystemdディレクトリにコピー
+sudo cp streamlit.service /etc/systemd/system/
+
+# systemdの設定を再読み込み
+sudo systemctl daemon-reload
+
+# サービスを有効化（起動時に自動起動）
+sudo systemctl enable streamlit
+
+# サービスを開始
+sudo systemctl start streamlit
+
+# サービスの状態を確認
+sudo systemctl status streamlit
+```
+
+#### 7. ファイアウォールでポート8501を開放
+
+Lightsailのコンソールから、インスタンスのネットワーキングタブで以下のルールを追加：
+
+- アプリケーション: カスタム
+- プロトコル: TCP
+- ポート: 8501
+
+#### 8. ブラウザでアクセス
+
+```
+http://<your-lightsail-ip>:8501
+```
+
+### サービスの管理
+
+```bash
+# サービスの状態確認
+sudo systemctl status streamlit
+
+# サービスの停止
+sudo systemctl stop streamlit
+
+# サービスの再起動
+sudo systemctl restart streamlit
+
+# ログの確認
+sudo journalctl -u streamlit -f
+```
+
+### 更新手順
+
+コードを更新した場合：
+
+```bash
+cd ~/my_shogiwars
+git pull
+source venv/bin/activate
+pip install -r requirements.txt
+sudo systemctl restart streamlit
+```
+
+### トラブルシューティング
+
+#### サービスが起動しない場合
+
+```bash
+# ログを確認
+sudo journalctl -u streamlit -n 50
+
+# 手動で実行してエラーを確認
+cd ~/my_shogiwars
+source venv/bin/activate
+streamlit run shogiwars_viewer.py --server.port=8501 --server.address=0.0.0.0
+```
+
+#### ポート8501にアクセスできない場合
+
+1. Lightsailのファイアウォール設定を確認
+2. サービスが起動しているか確認: `sudo systemctl status streamlit`
+3. ポートがリッスンしているか確認: `sudo ss -tlnp | grep 8501`
