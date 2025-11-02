@@ -381,8 +381,8 @@ streamlit run shogiwars_viewer.py
 ### 前提条件
 
 - AWS Lightsailインスタンスが起動していること
-- インスタンスのファイアウォールでポート80（HTTP）が開放されていること
 - SSHでインスタンスにアクセスできること
+- **注意**: Lightsail Distributionを使用する場合、ポート80はファイアウォールで閉じてください（Distribution経由のアクセスのみ許可）
 
 ### アーキテクチャ
 
@@ -536,21 +536,29 @@ sudo systemctl start streamlit
 sudo systemctl status streamlit
 ```
 
-#### 9. ファイアウォールでポート80を開放
+#### 9. ファイアウォールの設定
 
-Lightsailのコンソールから、インスタンスのネットワーキングタブで以下のルールを追加：
+**Lightsail Distributionを使用する場合:**
+- ポート80は**開放しない**（ファイアウォールで閉じたまま）
+- DistributionはAWS内部ネットワークを通じてインスタンスにアクセスします
+- これにより、直接IPアクセスを防ぎ、Distribution経由のアクセスのみを許可できます
 
-- アプリケーション: HTTP
-- プロトコル: TCP
-- ポート: 80
+**Distributionを使用せず、直接アクセスする場合:**
+- Lightsailコンソールのネットワーキングタブでポート80を開放
+  - アプリケーション: HTTP
+  - プロトコル: TCP
+  - ポート: 80
 
 #### 10. ブラウザでアクセス
 
+**Distributionを使用しない場合:**
 ```
 http://<your-lightsail-ip>
 ```
 
-Nginxが正しく動作していれば、ポート80でアクセスできます。
+**Distributionを使用する場合:**
+- 直接IPアクセスは不可（ファイアウォールで保護）
+- Distribution経由でのみアクセス可能（後述の設定を参照）
 
 ### サービスの管理
 
@@ -649,9 +657,33 @@ sudo ss -tlnp | grep 8501
 sudo systemctl restart streamlit
 ```
 
+#### 直接IPアクセスを防ぐ方法
+
+**推奨**: Lightsail Distributionを使用する場合、ファイアウォールでポート80を閉じてください。
+
+```bash
+# Lightsailコンソールで設定
+# ネットワーキング → ファイアウォール
+# ポート80のルールを削除（または追加しない）
+```
+
+Lightsail Distributionは AWS 内部ネットワークを通じてインスタンスにアクセスするため、パブリックなポート80を開放する必要はありません。これにより：
+- 直接IPアクセス: `http://<ip>` → タイムアウト（接続できない）
+- Distribution経由: `https://<distribution>` → 正常にアクセス可能
+
 ### Lightsail Distribution（CDN）の設定
 
 HTTPSとカスタムドメインを使用したい場合、Lightsail Distributionを設定します：
+
+#### 重要: 直接IPアクセスの防止
+
+Lightsail Distributionを使用する場合は、**インスタンスのファイアウォールでポート80を閉じてください**。
+
+1. Lightsailコンソール → インスタンス → ネットワーキング → ファイアウォール
+2. ポート80のルールを削除（または追加しない）
+3. SSHポート（22）は開けたままにする
+
+Lightsail DistributionはAWS内部ネットワーク経由でインスタンスにアクセスするため、パブリックにポート80を開放する必要はありません。
 
 #### 1. Distributionの作成
 
@@ -678,7 +710,23 @@ Lightsailコンソールで：
 
 - **Distribution経由**: `https://<distribution-domain>`
 - **カスタムドメイン**: `https://shogiwars.example.com`
+- **直接IPアクセス**: `http://<lightsail-ip>` → 接続タイムアウト（ファイアウォールでブロック）
 
 **注意**:
 - Distributionはキャッシュを行うため、更新が反映されるまで数分かかる場合があります
 - キャッシュをクリアしたい場合は、Distributionの詳細ページで**すべてのキャッシュをクリア**を実行してください
+- ファイアウォールでポート80を閉じることで、直接IPアクセスを防ぎ、Distribution経由のアクセスのみを許可します
+
+#### 4. セキュリティの確認
+
+ファイアウォール設定が正しく機能しているか確認：
+
+```bash
+# 直接IPアクセス（タイムアウトするはず）
+curl -I --max-time 10 http://<your-lightsail-ip>
+# → curl: (28) Connection timed out
+
+# Distribution経由（200 OKが返るはず）
+curl -I https://<distribution-domain>
+# → HTTP/2 200
+```
