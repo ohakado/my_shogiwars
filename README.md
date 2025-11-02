@@ -392,15 +392,19 @@ streamlit run shogiwars_viewer.py
 # スクリプトに実行権限を付与
 chmod +x deploy.sh
 
-# 初回デプロイ
-./deploy.sh <your-lightsail-ip> --setup
+# 初回デプロイ（SSH鍵のパスを指定）
+./deploy.sh <your-lightsail-ip> ~/.ssh/lightsail_key.pem --setup
 
 # コードの更新
-./deploy.sh <your-lightsail-ip> --update
+./deploy.sh <your-lightsail-ip> ~/.ssh/lightsail_key.pem --update
 
 # JSONファイルのアップロード
-./deploy.sh <your-lightsail-ip> --upload-json
+./deploy.sh <your-lightsail-ip> ~/.ssh/lightsail_key.pem --upload-json
 ```
+
+**必要なもの:**
+- LightsailのSSH鍵ファイル（`.pem`形式）
+- SSH鍵ファイルの権限を正しく設定: `chmod 400 ~/.ssh/lightsail_key.pem`
 
 **注意:** 初回デプロイ時にGitリポジトリのURLを入力するか、手動でコードをアップロードしてください。
 
@@ -411,7 +415,13 @@ chmod +x deploy.sh
 #### 1. Lightsailインスタンスに接続
 
 ```bash
-ssh ec2-user@<your-lightsail-ip>
+# SSH鍵を使用して接続
+ssh -i ~/.ssh/lightsail_key.pem ec2-user@<your-lightsail-ip>
+```
+
+**注意:** SSH鍵ファイルの権限が正しく設定されている必要があります:
+```bash
+chmod 400 ~/.ssh/lightsail_key.pem
 ```
 
 #### 2. 必要なパッケージをインストール
@@ -454,11 +464,11 @@ pip install -r requirements.txt
 #### 5. resultディレクトリを作成してJSONファイルを配置
 
 ```bash
-# resultディレクトリを作成
+# サーバー側でresultディレクトリを作成
 mkdir -p result
 
 # ローカルからJSONファイルをアップロード（ローカル端末で実行）
-scp result/*.json ec2-user@<your-lightsail-ip>:~/my_shogiwars/result/
+scp -i ~/.ssh/lightsail_key.pem result/*.json ec2-user@<your-lightsail-ip>:~/my_shogiwars/result/
 ```
 
 #### 6. systemdサービスを設定
