@@ -6,8 +6,9 @@ lxml>=4.9.0
 setuptools>=80.0.0
 
 # Webアプリケーション用パッケージ
-streamlit>=1.51.0
-pandas>=2.3.0
-matplotlib>=3.10.0
-# 注意: pyarrowはPython 3.14でビルドに失敗する可能性があります
-# pyarrowなしでも基本的な機能は動作します
+streamlit>=1.28.0
+streamlit-aggrid>=1.1.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+# Python 3.14ではpyarrow 22.0.0以降のみビルド済みホイールが利用可能
+pyarrow>=22.0.0

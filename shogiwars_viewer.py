@@ -10,6 +10,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import matplotlib.pyplot as plt
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
 
 # ページ設定
 st.set_page_config(
@@ -23,31 +24,38 @@ st.title("♟️ 将棋ウォーズ棋譜ビューア")
 # セッションステートの初期化
 if 'selected_opponent' not in st.session_state:
     st.session_state.selected_opponent = None
+if 'selected_badge' not in st.session_state:
+    st.session_state.selected_badge = None
+if 'grid_key_counter' not in st.session_state:
+    st.session_state.grid_key_counter = 0
 
 # 段位をソート用の数値に変換する関数
 def rank_to_sort_key(rank):
-    """段位を数値に変換してソート用のキーとする"""
+    """段位を数値に変換してソート用のキーとする
+    降順（大→小）: 九段(109) → ... → 初段(101) → 1級(99) → 2級(98) → ... → 30級(70)
+    昇順（小→大）: 30級(70) → ... → 2級(98) → 1級(99) → 初段(101) → ... → 九段(109)
+    """
     if not rank:
-        return 999  # 不明な段位は最後に
+        return 0  # 不明な段位は最初に
 
-    # 段の場合
+    # 段の場合（100より大きい数で、数字が大きいほど強い）
     if "段" in rank:
         try:
-            dan_map = {"初段": 0, "二段": -1, "三段": -2, "四段": -3, "五段": -4,
-                      "六段": -5, "七段": -6, "八段": -7, "九段": -8}
-            return dan_map.get(rank, 999)
+            dan_map = {"初段": 101, "二段": 102, "三段": 103, "四段": 104, "五段": 105,
+                      "六段": 106, "七段": 107, "八段": 108, "九段": 109, "十段": 110}
+            return dan_map.get(rank, 0)
         except:
-            return 999
+            return 0
 
-    # 級の場合
+    # 級の場合（100 - 級数で、数字が小さいほど強い: 1級=99 > 2級=98 > 3級=97...）
     if "級" in rank:
         try:
             kyu_num = int(rank.replace("級", ""))
-            return kyu_num
+            return 100 - kyu_num  # 1級=99, 2級=98, ..., 30級=70
         except:
-            return 999
+            return 0
 
-    return 999
+    return 0
 
 # result/ディレクトリ内のすべてのJSONファイルを読み込み
 result_dir = Path("result")
@@ -80,16 +88,6 @@ if result_dir.exists():
         except Exception as e:
             st.sidebar.warning(f"⚠️ {json_file.name} の読み込みに失敗: {e}")
 
-    if loaded_files:
-        st.sidebar.success(f"✅ {len(loaded_files)}個のファイルから{len(all_replays)}件の棋譜を読み込みました")
-        st.sidebar.info("読み込んだファイル:\n" + "\n".join([f"- {f}" for f in loaded_files]))
-        if user_name:
-            st.sidebar.info(f"ユーザー: {user_name}")
-    else:
-        st.sidebar.warning("result/ディレクトリにJSONファイルがありません")
-else:
-    st.sidebar.warning("result/ディレクトリが見つかりません")
-
 # データ表示
 if all_replays:
     # 対局データ
@@ -102,6 +100,7 @@ if all_replays:
 
         # フィルター
         st.subheader("フィルター")
+        st.info("💡 棋譜リストの対戦相手名や戦型（青色のリンク）をクリックすると絞り込めます")
 
         # 対局相手タイプ、初期配置タイプ、持ち時間フィルター
         col_type1, col_type2, col_type3 = st.columns(3)
@@ -209,20 +208,16 @@ if all_replays:
             opponent_options = ["すべて"] + sorted(list(all_opponents))
 
             # セッションステートから対戦相手が指定されている場合、そのインデックスを取得
-            default_index = 0
             if st.session_state.selected_opponent and st.session_state.selected_opponent in opponent_options:
                 default_index = opponent_options.index(st.session_state.selected_opponent)
+            else:
+                default_index = 0
 
             opponent_filter = st.selectbox(
                 "対戦相手",
                 opponent_options,
-                index=default_index,
-                key="opponent_selectbox"
+                index=default_index
             )
-
-            # セレクトボックスが変更されたら、セッションステートを更新
-            if opponent_filter != st.session_state.selected_opponent:
-                st.session_state.selected_opponent = opponent_filter if opponent_filter != "すべて" else None
 
         with col4:
             # 相手段位フィルター
@@ -238,8 +233,8 @@ if all_replays:
                     if opponent_class:
                         all_classes.add(opponent_class)
 
-            # 段位をカスタムソート
-            sorted_classes = sorted(list(all_classes), key=rank_to_sort_key)
+            # 段位をカスタムソート（降順：九段→...→初段→1級→...→30級）
+            sorted_classes = sorted(list(all_classes), key=rank_to_sort_key, reverse=True)
 
             class_filter = st.selectbox(
                 "相手段位",
@@ -253,9 +248,18 @@ if all_replays:
                 badges = replay.get("badges", [])
                 all_badges.update(badges)
 
+            badge_options = ["すべて", "戦型なし"] + sorted(list(all_badges))
+
+            # セッションステートから戦型が指定されている場合、そのインデックスを取得
+            if st.session_state.selected_badge and st.session_state.selected_badge in badge_options:
+                badge_default_index = badge_options.index(st.session_state.selected_badge)
+            else:
+                badge_default_index = 0
+
             badge_filter = st.selectbox(
                 "戦型",
-                ["すべて", "戦型なし"] + sorted(list(all_badges))
+                badge_options,
+                index=badge_default_index
             )
 
         # データフィルタリング
@@ -475,13 +479,19 @@ if all_replays:
                 badges = replay.get("badges", [])
                 badges_display = " ".join(badges) if badges else ""
 
+                # ソートキーを保持
+                sort_key = rank_to_sort_key(opponent_class)
+
                 table_data.append({
                     "日時": dt_display,
                     "勝敗": result_display,
                     "手番": user_side,
                     "対戦相手": opponent_name,
                     "相手段位": opponent_class,
+                    "相手段位ソートキー": sort_key,
                     "戦型": badges_display,
+                    "戦型リスト": badges,  # JavaScriptで使用するため配列で保持
+                    "clicked_badge": "",  # クリックされたバッジを保持
                     "URL": replay.get("url", ""),
                     "game_id": replay.get("game_id", "")
                 })
@@ -490,33 +500,201 @@ if all_replays:
         if table_data:
             df = pd.DataFrame(table_data)
 
-            # game_idは非表示
+            # 日時で降順ソート（新しい順）
+            df = df.sort_values(by="日時", ascending=False).reset_index(drop=True)
+
+            # 戦型リストをJSON文字列に変換（JavaScriptで使用するため）
+            df['戦型リスト'] = df['戦型リスト'].apply(lambda x: json.dumps(x, ensure_ascii=False))
+
+            # 表示用のDataFrame（game_idは非表示、その他は保持）
             df_display = df.drop(columns=["game_id"])
 
-            # 日時で降順ソート（新しい順）
-            df_display = df_display.sort_values(by="日時", ascending=False).reset_index(drop=True)
+            # AgGridの設定
+            gb = GridOptionsBuilder.from_dataframe(df_display)
 
-            # st.dataframeで表示（ソート機能付き）
-            st.dataframe(
-                df_display,
-                column_config={
-                    "日時": st.column_config.TextColumn("日時", width="medium"),
-                    "勝敗": st.column_config.TextColumn("勝敗", width="small"),
-                    "手番": st.column_config.TextColumn("手番", width="small"),
-                    "対戦相手": st.column_config.TextColumn("対戦相手", width="medium"),
-                    "相手段位": st.column_config.TextColumn("相手段位", width="small"),
-                    "戦型": st.column_config.TextColumn("戦型", width="large"),
-                    "URL": st.column_config.LinkColumn(
-                        "棋譜",
-                        display_text="棋譜を見る"
-                    ),
-                },
-                hide_index=True,
-                width='stretch',
-                height=600
+            # 全列の基本設定
+            gb.configure_default_column(
+                filterable=False,
+                sortable=True,
+                resizable=True
             )
+
+            # 各列の設定
+            gb.configure_column("日時", width=150)
+            gb.configure_column("勝敗", width=100)
+            gb.configure_column("手番", width=80)
+
+            # 対戦相手列をクリック可能にする（クリックで行を選択）
+            opponent_renderer = JsCode("""
+            class OpponentCellRenderer {
+                init(params) {
+                    this.eGui = document.createElement('span');
+                    if (params.value) {
+                        this.eGui.innerText = params.value;
+                        this.eGui.style.color = '#0066cc';
+                        this.eGui.style.cursor = 'pointer';
+                        this.eGui.style.textDecoration = 'underline';
+                        this.eGui.title = 'クリックしてこの対戦相手で絞り込み';
+
+                        // クリックイベントで行を選択
+                        this.eGui.addEventListener('click', () => {
+                            params.node.setSelected(true, true);
+                        });
+                    }
+                }
+                getGui() {
+                    return this.eGui;
+                }
+            }
+            """)
+            gb.configure_column("対戦相手", width=150, cellRenderer=opponent_renderer)
+
+            # ソートキー列を非表示にする
+            gb.configure_column("相手段位ソートキー", hide=True)
+
+            # 相手段位列にカスタムソートを設定（JsCodeを使用）
+            rank_comparator = JsCode("""
+            function(valueA, valueB, nodeA, nodeB, isInverted) {
+                var sortKeyA = nodeA.data['相手段位ソートキー'];
+                var sortKeyB = nodeB.data['相手段位ソートキー'];
+                return sortKeyA - sortKeyB;
+            }
+            """)
+            gb.configure_column("相手段位", width=100, comparator=rank_comparator)
+
+            # 戦型列を各バッジをクリック可能にする
+            badge_renderer = JsCode("""
+            class BadgeCellRenderer {
+                init(params) {
+                    this.eGui = document.createElement('div');
+                    const badgesJson = params.data['戦型リスト'];
+
+                    // JSON文字列をパース
+                    let badges = [];
+                    try {
+                        badges = JSON.parse(badgesJson);
+                    } catch (e) {
+                        // パースに失敗した場合は空配列
+                        badges = [];
+                    }
+
+                    if (badges && badges.length > 0) {
+                        badges.forEach((badge, index) => {
+                            const span = document.createElement('span');
+                            span.innerText = badge;
+                            span.style.color = '#0066cc';
+                            span.style.cursor = 'pointer';
+                            span.style.textDecoration = 'underline';
+                            span.style.marginRight = '8px';
+                            span.title = 'クリックしてこの戦型で絞り込み';
+
+                            // クリックイベント
+                            span.addEventListener('click', () => {
+                                // クリックされたバッジを記録
+                                params.data['clicked_badge'] = badge;
+                                // 行を選択
+                                params.node.setSelected(true, true);
+                            });
+
+                            this.eGui.appendChild(span);
+                        });
+                    }
+                }
+                getGui() {
+                    return this.eGui;
+                }
+            }
+            """)
+
+            # 戦型リストと clicked_badge 列を非表示にする
+            gb.configure_column("戦型リスト", hide=True)
+            gb.configure_column("clicked_badge", hide=True)
+            gb.configure_column("戦型", width=250, cellRenderer=badge_renderer)
+
+            # URL列をリンクとして表示（JsCodeを使用）
+            url_renderer = JsCode("""
+            class UrlCellRenderer {
+                init(params) {
+                    this.eGui = document.createElement('a');
+                    if (params.value) {
+                        this.eGui.href = params.value;
+                        this.eGui.target = '_blank';
+                        this.eGui.innerText = '棋譜を見る';
+                        this.eGui.style.color = '#0066cc';
+                    }
+                }
+                getGui() {
+                    return this.eGui;
+                }
+            }
+            """)
+            gb.configure_column("URL", headerName="棋譜", width=100, cellRenderer=url_renderer)
+
+            # グリッドオプション
+            gb.configure_pagination(enabled=False)
+            gb.configure_side_bar()
+
+            # 行選択を有効にする
+            gb.configure_selection(selection_mode='single', use_checkbox=False, rowMultiSelectWithClick=False)
+
+            gridOptions = gb.build()
+
+            # AgGridで表示（キーを動的に変更して選択状態をリセット）
+            grid_response = AgGrid(
+                df_display,
+                gridOptions=gridOptions,
+                height=600,
+                theme='streamlit',
+                update_mode=GridUpdateMode.SELECTION_CHANGED,  # 選択変更時に更新
+                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+                allow_unsafe_jscode=True,  # カスタムJavaScriptを許可
+                enable_enterprise_modules=False,
+                key=f"games_grid_{st.session_state.grid_key_counter}",  # 動的キーで選択をリセット
+                custom_css={
+                    "#gridToolBar": {"padding-bottom": "0px !important"}
+                }
+            )
+
+            # 選択された行があれば、対戦相手または戦型でフィルタリング
+            if grid_response['selected_rows'] is not None and len(grid_response['selected_rows']) > 0:
+                selected_row = grid_response['selected_rows'].iloc[0]
+                clicked_badge = selected_row.get('clicked_badge', '')
+
+                # バッジがクリックされた場合は戦型フィルターを設定
+                if clicked_badge:
+                    current_badge_filter = st.session_state.get('selected_badge', None)
+
+                    if current_badge_filter != clicked_badge:
+                        # 戦型フィルターを更新
+                        st.session_state.selected_badge = clicked_badge
+                        # グリッドキーをインクリメントして選択状態をリセット
+                        st.session_state.grid_key_counter += 1
+                        st.rerun()
+                else:
+                    # 対戦相手がクリックされた場合
+                    selected_opponent = selected_row['対戦相手']
+                    current_opponent_filter = st.session_state.get('selected_opponent', None)
+
+                    if current_opponent_filter != selected_opponent:
+                        # 対戦相手フィルターを更新
+                        st.session_state.selected_opponent = selected_opponent
+                        # グリッドキーをインクリメントして選択状態をリセット
+                        st.session_state.grid_key_counter += 1
+                        st.rerun()
         else:
             st.warning("表示する対局がありません")
+
+        # 読み込みログ（折りたたみ表示、初期状態は閉じる）
+        with st.expander("📋 読み込みログ", expanded=False):
+            if loaded_files:
+                st.success(f"✅ {len(loaded_files)}個のファイルから{len(all_replays)}件の棋譜を読み込みました")
+                if user_name:
+                    st.info(f"**ユーザー:** {user_name}")
+                st.markdown("**読み込んだファイル:**")
+                for f in loaded_files:
+                    st.text(f"  • {f}")
+            else:
+                st.warning("result/ディレクトリにJSONファイルがありません")
 else:
     st.info("result/ディレクトリにJSONファイルがありません")
 
