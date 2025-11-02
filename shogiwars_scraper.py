@@ -176,6 +176,8 @@ def scrape_page(
     opponent: str,
     month: str,
     gtype: str,
+    opponent_type: str,
+    init_pos_type: str,
     page: int
 ) -> tuple[List[Dict[str, str]], bool]:
     """
@@ -187,6 +189,8 @@ def scrape_page(
         opponent: 対戦相手のID
         month: 対象月（YYYY-MM形式）
         gtype: ゲームタイプ
+        opponent_type: 対戦相手タイプ
+        init_pos_type: 初期配置タイプ
         page: ページ番号
 
     Returns:
@@ -196,11 +200,11 @@ def scrape_page(
 
     params = {
         "animal": "false",
-        "init_pos_type": "normal",
+        "init_pos_type": init_pos_type,
         "is_latest": "false",
         "locale": "ja",
         "month": month,
-        "opponent_type": "normal",
+        "opponent_type": opponent_type,
         "user_id": user,
         "page": page
     }
@@ -355,7 +359,8 @@ def scrape_page(
                     for badge_link in badge_links:
                         badge_text = badge_link.get_text(strip=True)
                         if badge_text and badge_text.startswith("#"):
-                            badges.append(badge_text)
+                            # 先頭の#を除去して追加
+                            badges.append(badge_text[1:])
 
         # winnerから各プレイヤーのresultを計算
         if winner == "sente":
@@ -398,6 +403,8 @@ def scrape_game_urls(
     opponent: str,
     month: str = None,
     gtype: str = None,
+    opponent_type: str = "normal",
+    init_pos_type: str = "normal",
     limit: int = None
 ) -> List[Dict[str, str]]:
     """
@@ -410,6 +417,8 @@ def scrape_game_urls(
         opponent: 対戦相手のID
         month: 対象月（YYYY-MM形式、Noneの場合は現在月）
         gtype: ゲームタイプ（None=10分切れ負け, s1=1手10秒, sb=3分切れ負け）
+        opponent_type: 対戦相手タイプ（normal=ランク, friend=友達, etc.）
+        init_pos_type: 初期配置タイプ（normal=通常, sprint=スプリント）
         limit: 最大ページ数（Noneの場合は全ページを取得）
 
     Returns:
@@ -419,7 +428,7 @@ def scrape_game_urls(
     if month is None:
         month = datetime.now().strftime("%Y-%m")
 
-    print(f"Fetching game history for {user} vs {opponent} in {month}...")
+    print(f"Fetching game history for {user} vs {opponent} in {month} (type: {opponent_type}, pos: {init_pos_type})...")
 
     all_game_urls = []
     page = 1
@@ -430,7 +439,7 @@ def scrape_game_urls(
             break
 
         print(f"Fetching page {page}...")
-        game_urls, has_games = scrape_page(driver, user, opponent, month, gtype, page)
+        game_urls, has_games = scrape_page(driver, user, opponent, month, gtype, opponent_type, init_pos_type, page)
 
         # ページに対局が全く存在しない場合は終了
         if not has_games:
@@ -509,6 +518,18 @@ def main():
         help="ゲームタイプ: s1=1手10秒, sb=3分切れ負け (default: 10分切れ負け)"
     )
     parser.add_argument(
+        "--opponent-type",
+        default="normal",
+        choices=["normal", "friend", "coach", "closed_event", "learning"],
+        help="対戦相手タイプ: normal=ランク, friend=友達, coach=指導, closed_event=大会, learning=ラーニング (default: normal)"
+    )
+    parser.add_argument(
+        "--init-pos-type",
+        default="normal",
+        choices=["normal", "sprint"],
+        help="初期配置タイプ: normal=通常, sprint=スプリント (default: normal)"
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=None,
@@ -526,6 +547,8 @@ def main():
     opponent = args.opponent
     month = args.month
     gtype = args.gtype
+    opponent_type = args.opponent_type
+    init_pos_type = args.init_pos_type
     limit = args.limit
     output_file = args.output
 
@@ -596,6 +619,8 @@ def main():
             opponent=opponent,
             month=month,
             gtype=gtype,
+            opponent_type=opponent_type,
+            init_pos_type=init_pos_type,
             limit=limit
         )
 
@@ -606,6 +631,8 @@ def main():
                 "opponent": opponent if opponent else "(all)",
                 "month": month,
                 "gtype": gtype if gtype else "10min",
+                "opponent_type": opponent_type,
+                "init_pos_type": init_pos_type,
                 "limit": limit if limit else "(all)"
             }
 
