@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 将棋ウォーズの対局履歴から特定の対戦相手との棋譜URLを抽出するスクリプト
 ログイン認証に対応
