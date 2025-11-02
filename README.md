@@ -4,11 +4,11 @@
 
 ## 機能
 
-1. **棋譜URLスクレイパー** (`scrape_shogiwars.py`)
+1. **棋譜URLスクレイパー** (`shogiwars_scraper.py`)
    - 将棋ウォーズの対局履歴ページから棋譜URLを抽出してJSONファイルに保存
    - ログイン認証に対応
 
-2. **棋譜ビューア** (`app.py`)
+2. **棋譜ビューア** (`shogiwars_viewer.py`)
    - Streamlitを使用したWebアプリケーション
    - JSONファイルから対局データを読み込んで表示
    - フィルタリング、統計表示機能
@@ -44,7 +44,7 @@ pip install -r requirements.txt
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py
+python shogiwars_scraper.py
 ```
 
 #### 2. 対話的に入力
@@ -52,7 +52,7 @@ python scrape_shogiwars.py
 認証情報を指定せずに実行すると、プロンプトでユーザー名とパスワードの入力を求められます：
 
 ```bash
-python scrape_shogiwars.py
+python shogiwars_scraper.py
 ```
 
 ### 基本的な使い方
@@ -66,7 +66,7 @@ export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
 
 # スクリプトを実行
-python scrape_shogiwars.py
+python shogiwars_scraper.py
 ```
 
 デフォルトでは以下の設定で実行されます:
@@ -93,7 +93,7 @@ python scrape_shogiwars.py
 スクレイピングパラメータはコマンドライン引数で指定します：
 
 ```bash
-python scrape_shogiwars.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
+python shogiwars_scraper.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
 ```
 
 **利用可能な引数:**
@@ -117,13 +117,14 @@ python scrape_shogiwars.py --gtype s1 --month 2024-10 --limit 100 --opponent "od
 
 ```
 workspace2/crawler/
-├── scrape_shogiwars.py
+├── shogiwars_scraper.py      # 棋譜URLスクレイパー
+├── shogiwars_viewer.py      # 棋譜ビューア（Streamlit）
 ├── requirements.txt
 ├── README.md
 ├── .gitignore
-├── result/          # JSONファイルの出力先
+├── result/                  # JSONファイルの出力先
 │   └── game_replays_*.json
-└── tmp/             # スクリーンショットなど一時ファイルの保存先
+└── tmp/                     # スクリーンショットなど一時ファイルの保存先
     └── login_*.png
 ```
 
@@ -206,7 +207,7 @@ JSONファイルには以下の形式でデータが保存されます:
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py
+python shogiwars_scraper.py
 # 出力: result/game_replays_10min_2025-11_ohakado.json
 ```
 
@@ -215,7 +216,7 @@ python scrape_shogiwars.py
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py --gtype s1 --month 2024-10
+python shogiwars_scraper.py --gtype s1 --month 2024-10
 # 出力: result/game_replays_s1_2024-10_ohakado.json
 ```
 
@@ -224,7 +225,7 @@ python scrape_shogiwars.py --gtype s1 --month 2024-10
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py --gtype s1 --limit 100
+python shogiwars_scraper.py --gtype s1 --limit 100
 # 出力: result/game_replays_s1_2025-11_ohakado.json
 ```
 
@@ -233,7 +234,7 @@ python scrape_shogiwars.py --gtype s1 --limit 100
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py --opponent "odakaho" --gtype s1
+python shogiwars_scraper.py --opponent "odakaho" --gtype s1
 # 出力: result/game_replays_s1_2025-11_ohakado_odakaho.json
 ```
 
@@ -242,7 +243,7 @@ python scrape_shogiwars.py --opponent "odakaho" --gtype s1
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
+python shogiwars_scraper.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
 # 出力: result/game_replays_s1_2024-10_ohakado_odakaho.json
 ```
 
@@ -251,7 +252,7 @@ python scrape_shogiwars.py --gtype s1 --month 2024-10 --limit 100 --opponent "od
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py --opponent "odakaho" --output my_games.json
+python shogiwars_scraper.py --opponent "odakaho" --output my_games.json
 # 出力: my_games.json (カレントディレクトリ)
 ```
 
@@ -263,7 +264,7 @@ python scrape_shogiwars.py --opponent "odakaho" --output my_games.json
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
 export SHOGIWARS_HEADLESS="true"
-python scrape_shogiwars.py
+python shogiwars_scraper.py
 ```
 
 ### ブラウザを表示してデバッグ
@@ -273,7 +274,7 @@ python scrape_shogiwars.py
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py
+python shogiwars_scraper.py
 ```
 
 ## トラブルシューティング
@@ -332,16 +333,17 @@ pip install webdriver-manager
 source venv/bin/activate
 
 # Streamlitアプリケーションを起動
-streamlit run app.py
+streamlit run shogiwars_viewer.py
 ```
 
 ブラウザで `http://localhost:8501` が自動的に開きます。
 
 ### 機能
 
-1. **JSONファイルの読み込み**
-   - `result/` ディレクトリ内のJSONファイルを選択
-   - または、ファイルをアップロード
+1. **JSONファイルの自動読み込み**
+   - `result/` ディレクトリ内のすべてのJSONファイルを自動的に読み込み
+   - 複数ファイルの棋譜を統合して表示（重複は許容）
+   - 最初のJSONファイルから自動的にユーザー名を取得
 
 2. **対局一覧の表示**
    - 日時、手番、勝敗、対戦相手、段位、バッジを表形式で表示

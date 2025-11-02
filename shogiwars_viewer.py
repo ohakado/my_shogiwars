@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""
+将棋ウォーズ棋譜ビューア (Streamlit)
+JSONファイルから棋譜データを読み込んで表示します
+"""
+
+import streamlit as st
+import json
+import pandas as pd
+from pathlib import Path
+from datetime import datetime
+
+# ページ設定
+st.set_page_config(
+    page_title="将棋ウォーズ棋譜ビューア",
+    page_icon="♟️",
+    layout="wide"
+)
+
+st.title("♟️ 将棋ウォーズ棋譜ビューア")
+
+# result/ディレクトリ内のすべてのJSONファイルを読み込み
+result_dir = Path("result")
+all_replays = []
+loaded_files = []
+user_name = None
+
+if result_dir.exists():
+    json_files = sorted(result_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+
+    for json_file in json_files:
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                file_data = json.load(f)
+                replays = file_data.get("replays", [])
+                all_replays.extend(replays)
+                loaded_files.append(json_file.name)
+
+                # 最初のファイルからユーザー名を取得
+                if user_name is None:
+                    params = file_data.get("params", {})
+                    user_name = params.get("user", "")
+        except Exception as e:
+            st.sidebar.warning(f"⚠️ {json_file.name} の読み込みに失敗: {e}")
+
+    if loaded_files:
+        st.sidebar.success(f"✅ {len(loaded_files)}個のファイルから{len(all_replays)}件の棋譜を読み込みました")
+        st.sidebar.info("読み込んだファイル:\n" + "\n".join([f"- {f}" for f in loaded_files]))
+        if user_name:
+            st.sidebar.info(f"ユーザー: {user_name}")
+    else:
+        st.sidebar.warning("result/ディレクトリにJSONファイルがありません")
+else:
+    st.sidebar.warning("result/ディレクトリが見つかりません")
+
+# データ表示
+if all_replays:
+    # 対局データ
+    replays = all_replays
+
+    if not replays:
+        st.warning("対局データがありません")
+    else:
+        st.header(f"🎮 対局一覧 ({len(replays)}件)")
+
+        # フィルター
+        st.subheader("フィルター")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            # 勝敗フィルター
+            result_filter = st.selectbox(
+                "勝敗",
+                ["すべて", "勝ち", "負け", "引き分け"]
+            )
+
+        with col2:
+            # 対戦相手フィルター
+            all_opponents = set()
+            if user_name:
+                for replay in replays:
+                    sente_name = replay.get("sente", {}).get("name", "")
+                    gote_name = replay.get("gote", {}).get("name", "")
+                    if sente_name != user_name and sente_name:
+                        all_opponents.add(sente_name)
+                    if gote_name != user_name and gote_name:
+                        all_opponents.add(gote_name)
+
+            opponent_filter = st.selectbox(
+                "対戦相手",
+                ["すべて"] + sorted(list(all_opponents))
+            )
+
+        with col3:
+            # バッジフィルター
+            all_badges = set()
+            for replay in replays:
+                badges = replay.get("badges", [])
+                all_badges.update(badges)
+
+            badge_filter = st.selectbox(
+                "バッジ",
+                ["すべて", "バッジなし"] + sorted(list(all_badges))
+            )
+
+        # データフィルタリング
+        filtered_replays = []
+
+        if not user_name:
+            st.warning("ユーザー名が取得できませんでした")
+        else:
+            for replay in replays:
+                sente = replay.get("sente", {})
+                gote = replay.get("gote", {})
+
+                # ユーザーの手番を判定
+                if sente.get("name") == user_name:
+                    user_result = sente.get("result", "")
+                    opponent_name = gote.get("name", "")
+                elif gote.get("name") == user_name:
+                    user_result = gote.get("result", "")
+                    opponent_name = sente.get("name", "")
+                else:
+                    # ユーザーが参加していない対局はスキップ
+                    continue
+
+                # 勝敗フィルター
+                if result_filter != "すべて":
+                    filter_map = {"勝ち": "win", "負け": "lose", "引き分け": "draw"}
+                    if user_result != filter_map.get(result_filter):
+                        continue
+
+                # 対戦相手フィルター
+                if opponent_filter != "すべて" and opponent_name != opponent_filter:
+                    continue
+
+                # バッジフィルター
+                if badge_filter != "すべて":
+                    badges = replay.get("badges", [])
+                    if badge_filter == "バッジなし":
+                        # バッジが空でない場合はスキップ
+                        if badges:
+                            continue
+                    else:
+                        # 特定のバッジが含まれていない場合はスキップ
+                        if badge_filter not in badges:
+                            continue
+
+                filtered_replays.append(replay)
+
+        # 統計情報（フィルタリング後のデータで計算）
+        if user_name and filtered_replays:
+            # 勝敗カウント用のデータを先に作成
+            temp_stats = []
+            for replay in filtered_replays:
+                sente = replay.get("sente", {})
+                gote = replay.get("gote", {})
+
+                if sente.get("name") == user_name:
+                    user_result = sente.get("result", "")
+                else:
+                    user_result = gote.get("result", "")
+
+                result_icon = {"win": "勝ち", "lose": "負け", "draw": "引き分け"}
+                temp_stats.append(result_icon.get(user_result, ""))
+
+            st.divider()
+            st.subheader("📈 統計")
+
+            col1, col2, col3, col4 = st.columns(4)
+
+            win_count = sum(1 for r in temp_stats if r == "勝ち")
+            lose_count = sum(1 for r in temp_stats if r == "負け")
+            draw_count = sum(1 for r in temp_stats if r == "引き分け")
+            total = len(temp_stats)
+
+            with col1:
+                st.metric("総対局数", total)
+            with col2:
+                win_rate = (win_count / total * 100) if total > 0 else 0
+                st.metric("勝ち", f"{win_count} ({win_rate:.1f}%)")
+            with col3:
+                st.metric("負け", f"{lose_count}")
+            with col4:
+                st.metric("引き分け", f"{draw_count}")
+
+            st.divider()
+
+        # テーブル表示用のデータ作成
+        table_data = []
+        if user_name:
+            st.info(f"表示件数: {len(filtered_replays)} / {len(replays)} 件")
+
+            for replay in filtered_replays:
+                sente = replay.get("sente", {})
+                gote = replay.get("gote", {})
+
+                # ユーザーの手番を判定
+                if sente.get("name") == user_name:
+                    user_side = "先手"
+                    user_result = sente.get("result", "")
+                    opponent_name = gote.get("name", "")
+                    opponent_class = gote.get("class", "")
+                else:
+                    user_side = "後手"
+                    user_result = gote.get("result", "")
+                    opponent_name = sente.get("name", "")
+                    opponent_class = sente.get("class", "")
+
+                # 勝敗アイコン
+                result_icon = {"win": "🟢 勝ち", "lose": "🔴 負け", "draw": "⚪ 引き分け"}
+                result_display = result_icon.get(user_result, user_result)
+
+                # 日時
+                dt_str = replay.get("datetime", "")
+                if dt_str:
+                    try:
+                        dt = datetime.fromisoformat(dt_str)
+                        dt_display = dt.strftime("%Y-%m-%d %H:%M")
+                    except:
+                        dt_display = dt_str
+                else:
+                    dt_display = "N/A"
+
+                # バッジ
+                badges = replay.get("badges", [])
+                badges_display = " ".join(badges) if badges else ""
+
+                table_data.append({
+                    "日時": dt_display,
+                    "手番": user_side,
+                    "勝敗": result_display,
+                    "対戦相手": opponent_name,
+                    "相手段位": opponent_class,
+                    "バッジ": badges_display,
+                    "URL": replay.get("url", ""),
+                    "game_id": replay.get("game_id", "")
+                })
+
+        # DataFrame作成
+        if table_data:
+            df = pd.DataFrame(table_data)
+
+            # game_idは非表示
+            df_display = df.drop(columns=["game_id"])
+
+            # CSSスタイルを追加
+            st.markdown("""
+            <style>
+            .game-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 14px;
+                margin-top: 20px;
+            }
+            .game-table th {
+                background-color: #f0f2f6;
+                padding: 10px;
+                text-align: left;
+                border-bottom: 2px solid #ddd;
+                font-weight: 600;
+            }
+            .game-table td {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+            .game-table tr:hover {
+                background-color: #f5f5f5;
+            }
+            .game-table a {
+                color: #1f77b4;
+                text-decoration: none;
+            }
+            .game-table a:hover {
+                text-decoration: underline;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+            # HTMLでリンクを作成
+            def make_clickable(url):
+                return f'<a href="{url}" target="_blank">棋譜を見る</a>'
+
+            df_display_html = df_display.copy()
+            df_display_html['URL'] = df_display_html['URL'].apply(make_clickable)
+
+            # HTMLテーブルを生成
+            html_table = df_display_html.to_html(escape=False, index=False, classes='game-table')
+
+            # HTMLとして表示
+            st.markdown(html_table, unsafe_allow_html=True)
+        else:
+            st.warning("表示する対局がありません")
+else:
+    st.info("result/ディレクトリにJSONファイルがありません")
+
+    # 使い方
+    st.markdown("""
+    ## 使い方
+
+    1. `result/` ディレクトリにJSONファイルを配置してください
+    2. アプリを起動すると、すべてのJSONファイルが自動的に読み込まれます
+    3. 対局一覧が表示されます
+    4. フィルターを使って対局を絞り込むことができます
+
+    ## JSONファイルの生成
+
+    JSONファイルは `shogiwars_scraper.py` で生成できます：
+
+    ```bash
+    export SHOGIWARS_USERNAME="your_username"
+    export SHOGIWARS_PASSWORD="your_password"
+    python shogiwars_scraper.py --gtype s1 --month 2024-10
+    ```
+
+    生成されたファイルは `result/` ディレクトリに保存されます。
+    """)
