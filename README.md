@@ -381,8 +381,24 @@ streamlit run shogiwars_viewer.py
 ### 前提条件
 
 - AWS Lightsailインスタンスが起動していること
-- インスタンスのファイアウォールでポート8501が開放されていること
+- インスタンスのファイアウォールでポート80（HTTP）が開放されていること
 - SSHでインスタンスにアクセスできること
+
+### アーキテクチャ
+
+```
+[ユーザー]
+    ↓ (HTTP/HTTPS)
+[Lightsail Distribution (CDN)] ※オプション
+    ↓ (HTTP:80)
+[Nginx (リバースプロキシ)]
+    ↓ (localhost:8501)
+[Streamlit アプリケーション]
+```
+
+- **Nginx**: ポート80でリクエストを受け、Streamlitにプロキシ
+- **Streamlit**: ポート8501で内部的に動作
+- **Lightsail Distribution**: CDN、HTTPS、カスタムドメインを提供（オプション）
 
 ### デプロイスクリプトを使用する方法（推奨）
 
@@ -430,8 +446,8 @@ chmod 400 ~/.ssh/lightsail_key.pem
 # システムパッケージの更新
 sudo dnf update -y
 
-# Python 3.13とgitのインストール
-sudo dnf install -y python3.13 python3.13-pip git
+# Python 3.13、git、Nginxのインストール
+sudo dnf install -y python3.13 python3.13-pip git nginx
 
 # 開発ツールのインストール（pyarrow等のビルドに必要）
 sudo dnf groupinstall -y "Development Tools"
@@ -471,7 +487,24 @@ mkdir -p result
 scp -i ~/.ssh/lightsail_key.pem result/*.json ec2-user@<your-lightsail-ip>:~/my_shogiwars/result/
 ```
 
-#### 6. systemdサービスを設定
+#### 6. Nginxを設定
+
+```bash
+# Nginx設定ファイルをコピー
+sudo cp nginx-shogiwars.conf /etc/nginx/conf.d/
+
+# 設定ファイルの構文チェック
+sudo nginx -t
+
+# Nginxを有効化して起動
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
+# Nginxの状態を確認
+sudo systemctl status nginx
+```
+
+#### 7. systemdサービスを設定
 
 ```bash
 # サービスファイルをsystemdディレクトリにコピー
@@ -490,34 +523,38 @@ sudo systemctl start streamlit
 sudo systemctl status streamlit
 ```
 
-#### 7. ファイアウォールでポート8501を開放
+#### 8. ファイアウォールでポート80を開放
 
 Lightsailのコンソールから、インスタンスのネットワーキングタブで以下のルールを追加：
 
-- アプリケーション: カスタム
+- アプリケーション: HTTP
 - プロトコル: TCP
-- ポート: 8501
+- ポート: 80
 
-#### 8. ブラウザでアクセス
+#### 9. ブラウザでアクセス
 
 ```
-http://<your-lightsail-ip>:8501
+http://<your-lightsail-ip>
 ```
+
+Nginxが正しく動作していれば、ポート80でアクセスできます。
 
 ### サービスの管理
 
 ```bash
-# サービスの状態確認
-sudo systemctl status streamlit
+# Streamlitサービスの管理
+sudo systemctl status streamlit   # 状態確認
+sudo systemctl stop streamlit      # 停止
+sudo systemctl restart streamlit   # 再起動
+sudo journalctl -u streamlit -f    # ログ確認
 
-# サービスの停止
-sudo systemctl stop streamlit
-
-# サービスの再起動
-sudo systemctl restart streamlit
-
-# ログの確認
-sudo journalctl -u streamlit -f
+# Nginxサービスの管理
+sudo systemctl status nginx        # 状態確認
+sudo systemctl stop nginx          # 停止
+sudo systemctl restart nginx       # 再起動
+sudo systemctl reload nginx        # 設定リロード（接続を切らない）
+sudo tail -f /var/log/nginx/shogiwars_access.log  # アクセスログ
+sudo tail -f /var/log/nginx/shogiwars_error.log   # エラーログ
 ```
 
 ### 更新手順
@@ -529,12 +566,38 @@ cd ~/my_shogiwars
 git pull
 source venv/bin/activate
 pip install -r requirements.txt
+
+# Nginx設定を更新
+sudo cp nginx-shogiwars.conf /etc/nginx/conf.d/
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Streamlitを再起動
 sudo systemctl restart streamlit
 ```
 
 ### トラブルシューティング
 
-#### サービスが起動しない場合
+#### ポート80にアクセスできない場合
+
+1. Lightsailのファイアウォール設定を確認
+   ```bash
+   # Lightsailコンソールでポート80が開放されているか確認
+   ```
+
+2. Nginxが起動しているか確認
+   ```bash
+   sudo systemctl status nginx
+   sudo ss -tlnp | grep :80
+   ```
+
+3. Nginx設定を確認
+   ```bash
+   sudo nginx -t
+   sudo tail -f /var/log/nginx/shogiwars_error.log
+   ```
+
+#### Streamlitサービスが起動しない場合
 
 ```bash
 # ログを確認
@@ -546,8 +609,49 @@ source venv/bin/activate
 streamlit run shogiwars_viewer.py --server.port=8501 --server.address=0.0.0.0
 ```
 
-#### ポート8501にアクセスできない場合
+#### 502 Bad Gateway エラーが出る場合
 
-1. Lightsailのファイアウォール設定を確認
-2. サービスが起動しているか確認: `sudo systemctl status streamlit`
-3. ポートがリッスンしているか確認: `sudo ss -tlnp | grep 8501`
+Nginxは動いているがStreamlitに接続できない状態です：
+
+```bash
+# Streamlitが動作しているか確認
+sudo systemctl status streamlit
+sudo ss -tlnp | grep 8501
+
+# Streamlitを再起動
+sudo systemctl restart streamlit
+```
+
+### Lightsail Distribution（CDN）の設定
+
+HTTPSとカスタムドメインを使用したい場合、Lightsail Distributionを設定します：
+
+#### 1. Distributionの作成
+
+Lightsailコンソールで：
+1. **ネットワーキング** → **ディストリビューションを作成**
+2. **オリジンを選択**: Lightsailインスタンスを選択
+3. **オリジンプロトコルポリシー**: HTTP only
+4. **デフォルトの動作**:
+   - キャッシュ動作: Best for dynamic content
+   - 許可される HTTP メソッド: GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE
+5. **プランを選択**: 適切なプランを選択
+6. **ディストリビューションを作成**
+
+#### 2. カスタムドメインの設定（オプション）
+
+1. Distributionの詳細ページで**カスタムドメイン**タブを開く
+2. **証明書を作成**をクリック
+3. ドメイン名を入力（例: `shogiwars.example.com`）
+4. DNS検証用のCNAMEレコードを追加
+5. 証明書が検証されたら、カスタムドメインを有効化
+6. DNSでCNAMEレコードを追加（カスタムドメイン → Distributionドメイン）
+
+#### 3. アクセス
+
+- **Distribution経由**: `https://<distribution-domain>`
+- **カスタムドメイン**: `https://shogiwars.example.com`
+
+**注意**:
+- Distributionはキャッシュを行うため、更新が反映されるまで数分かかる場合があります
+- キャッシュをクリアしたい場合は、Distributionの詳細ページで**すべてのキャッシュをクリア**を実行してください

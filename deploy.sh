@@ -55,13 +55,13 @@ echo ""
 
 # 初回セットアップ
 if [ "$MODE" == "--setup" ]; then
-    echo -e "${GREEN}[1/7] システムパッケージの更新...${NC}"
+    echo -e "${GREEN}[1/8] システムパッケージの更新...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo dnf update -y"
 
-    echo -e "${GREEN}[2/7] 必要なパッケージのインストール...${NC}"
-    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo dnf install -y python3.13 python3.13-pip git && sudo dnf groupinstall -y 'Development Tools'"
+    echo -e "${GREEN}[2/8] 必要なパッケージのインストール...${NC}"
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo dnf install -y python3.13 python3.13-pip git nginx && sudo dnf groupinstall -y 'Development Tools'"
 
-    echo -e "${GREEN}[3/7] リポジトリのクローン...${NC}"
+    echo -e "${GREEN}[3/8] リポジトリのクローン...${NC}"
     echo -e "${YELLOW}注意: リポジトリURLを確認してください${NC}"
     read -p "GitリポジトリのURL（空でスキップ）: " REPO_URL
     if [ -n "$REPO_URL" ]; then
@@ -71,41 +71,52 @@ if [ "$MODE" == "--setup" ]; then
         exit 0
     fi
 
-    echo -e "${GREEN}[4/7] 仮想環境の作成とパッケージインストール...${NC}"
+    echo -e "${GREEN}[4/8] 仮想環境の作成とパッケージインストール...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && python3.13 -m venv venv && source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt"
 
-    echo -e "${GREEN}[5/7] resultディレクトリの作成...${NC}"
+    echo -e "${GREEN}[5/8] resultディレクトリの作成...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "mkdir -p ~/${APP_DIR}/result"
 
-    echo -e "${GREEN}[6/7] systemdサービスの設定...${NC}"
+    echo -e "${GREEN}[6/8] Nginxの設定...${NC}"
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && sudo cp nginx-shogiwars.conf /etc/nginx/conf.d/ && sudo nginx -t && sudo systemctl enable nginx && sudo systemctl start nginx"
+
+    echo -e "${GREEN}[7/8] systemdサービスの設定...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && sudo cp streamlit.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable streamlit && sudo systemctl start streamlit"
 
-    echo -e "${GREEN}[7/7] サービスの状態確認...${NC}"
-    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo systemctl status streamlit --no-pager"
+    echo -e "${GREEN}[8/8] サービスの状態確認...${NC}"
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo systemctl status streamlit --no-pager && sudo systemctl status nginx --no-pager"
 
     echo ""
     echo -e "${GREEN}✅ セットアップが完了しました！${NC}"
-    echo -e "ブラウザで ${YELLOW}http://${LIGHTSAIL_IP}:8501${NC} にアクセスしてください"
     echo ""
-    echo -e "${YELLOW}⚠️  Lightsailのファイアウォールでポート8501を開放してください${NC}"
+    echo -e "アクセス方法:"
+    echo -e "  - 直接アクセス: ${YELLOW}http://${LIGHTSAIL_IP}${NC} （ポート80）"
+    echo -e "  - Streamlit直接: ${YELLOW}http://${LIGHTSAIL_IP}:8501${NC}"
+    echo ""
+    echo -e "${YELLOW}⚠️  Lightsailのファイアウォール設定:${NC}"
+    echo -e "  - ポート80（HTTP）を開放してください"
+    echo -e "  - Lightsail Distributionを使用する場合は80番ポートをオリジンとして設定してください"
 
 # コード更新
 elif [ "$MODE" == "--update" ]; then
-    echo -e "${GREEN}[1/4] コードの更新 (git pull)...${NC}"
+    echo -e "${GREEN}[1/5] コードの更新 (git pull)...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && git pull"
 
-    echo -e "${GREEN}[2/4] パッケージの更新...${NC}"
+    echo -e "${GREEN}[2/5] パッケージの更新...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && source venv/bin/activate && pip install -r requirements.txt"
 
-    echo -e "${GREEN}[3/4] サービスの再起動...${NC}"
+    echo -e "${GREEN}[3/5] Nginx設定の更新...${NC}"
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && sudo cp nginx-shogiwars.conf /etc/nginx/conf.d/ && sudo nginx -t && sudo systemctl reload nginx"
+
+    echo -e "${GREEN}[4/5] Streamlitサービスの再起動...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo systemctl restart streamlit"
 
-    echo -e "${GREEN}[4/4] サービスの状態確認...${NC}"
-    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo systemctl status streamlit --no-pager"
+    echo -e "${GREEN}[5/5] サービスの状態確認...${NC}"
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo systemctl status streamlit --no-pager && sudo systemctl status nginx --no-pager"
 
     echo ""
     echo -e "${GREEN}✅ 更新が完了しました！${NC}"
-    echo -e "ブラウザで ${YELLOW}http://${LIGHTSAIL_IP}:8501${NC} にアクセスしてください"
+    echo -e "ブラウザで ${YELLOW}http://${LIGHTSAIL_IP}${NC} にアクセスしてください"
 
 # JSONファイルのアップロード
 elif [ "$MODE" == "--upload-json" ]; then
