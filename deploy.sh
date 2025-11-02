@@ -59,17 +59,26 @@ if [ "$MODE" == "--setup" ]; then
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo dnf update -y"
 
     echo -e "${GREEN}[2/8] 必要なパッケージのインストール...${NC}"
-    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo dnf install -y python3.13 python3.13-pip git nginx && sudo dnf groupinstall -y 'Development Tools'"
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo dnf install -y python3.13 python3.13-pip nginx && sudo dnf groupinstall -y 'Development Tools'"
 
-    echo -e "${GREEN}[3/8] リポジトリのクローン...${NC}"
-    echo -e "${YELLOW}注意: リポジトリURLを確認してください${NC}"
-    read -p "GitリポジトリのURL（空でスキップ）: " REPO_URL
-    if [ -n "$REPO_URL" ]; then
-        ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~ && git clone ${REPO_URL} ${APP_DIR} || (cd ${APP_DIR} && git pull)"
-    else
-        echo -e "${YELLOW}リポジトリのクローンをスキップします。手動でコードをアップロードしてください。${NC}"
-        exit 0
-    fi
+    echo -e "${GREEN}[3/8] アプリケーションコードのアップロード...${NC}"
+    echo -e "${YELLOW}ローカルのファイルをサーバーにアップロードします${NC}"
+
+    # ディレクトリの作成
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "mkdir -p ~/${APP_DIR}"
+
+    # 必要なファイルをアップロード
+    echo "  - requirements.txt をアップロード中..."
+    scp ${SSH_OPTS} requirements.txt ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - shogiwars_viewer.py をアップロード中..."
+    scp ${SSH_OPTS} shogiwars_viewer.py ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - streamlit.service をアップロード中..."
+    scp ${SSH_OPTS} streamlit.service ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - nginx-shogiwars.conf をアップロード中..."
+    scp ${SSH_OPTS} nginx-shogiwars.conf ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
 
     echo -e "${GREEN}[4/8] 仮想環境の作成とパッケージインストール...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && python3.13 -m venv venv && source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt"
@@ -99,8 +108,19 @@ if [ "$MODE" == "--setup" ]; then
 
 # コード更新
 elif [ "$MODE" == "--update" ]; then
-    echo -e "${GREEN}[1/5] コードの更新 (git pull)...${NC}"
-    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && git pull"
+    echo -e "${GREEN}[1/5] アプリケーションコードのアップロード...${NC}"
+
+    echo "  - requirements.txt をアップロード中..."
+    scp ${SSH_OPTS} requirements.txt ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - shogiwars_viewer.py をアップロード中..."
+    scp ${SSH_OPTS} shogiwars_viewer.py ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - streamlit.service をアップロード中..."
+    scp ${SSH_OPTS} streamlit.service ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - nginx-shogiwars.conf をアップロード中..."
+    scp ${SSH_OPTS} nginx-shogiwars.conf ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
 
     echo -e "${GREEN}[2/5] パッケージの更新...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && source venv/bin/activate && pip install -r requirements.txt"

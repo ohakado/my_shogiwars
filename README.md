@@ -422,7 +422,9 @@ chmod +x deploy.sh
 - LightsailのSSH鍵ファイル（`.pem`形式）
 - SSH鍵ファイルの権限を正しく設定: `chmod 400 ~/.ssh/lightsail_key.pem`
 
-**注意:** 初回デプロイ時にGitリポジトリのURLを入力するか、手動でコードをアップロードしてください。
+**動作:**
+- デプロイスクリプトはローカルのファイル（`shogiwars_viewer.py`、`requirements.txt`等）をサーバーに直接アップロードします
+- Git pullは使用しないため、サーバー側でGitリポジトリを設定する必要はありません
 
 ### 手動デプロイ手順
 
@@ -446,22 +448,33 @@ chmod 400 ~/.ssh/lightsail_key.pem
 # システムパッケージの更新
 sudo dnf update -y
 
-# Python 3.13、git、Nginxのインストール
-sudo dnf install -y python3.13 python3.13-pip git nginx
+# Python 3.13とNginxのインストール
+sudo dnf install -y python3.13 python3.13-pip nginx
 
 # 開発ツールのインストール（pyarrow等のビルドに必要）
 sudo dnf groupinstall -y "Development Tools"
 ```
 
-#### 3. リポジトリをクローン
+#### 3. アプリケーションディレクトリを作成
 
 ```bash
-cd ~
-git clone <your-repository-url> my_shogiwars
-cd my_shogiwars
+mkdir -p ~/my_shogiwars
+cd ~/my_shogiwars
 ```
 
-#### 4. 仮想環境を作成してパッケージをインストール
+#### 4. ローカルからファイルをアップロード
+
+ローカル端末で以下を実行してファイルをアップロード：
+
+```bash
+# 必要なファイルをアップロード
+scp -i ~/.ssh/lightsail_key.pem requirements.txt ec2-user@<your-lightsail-ip>:~/my_shogiwars/
+scp -i ~/.ssh/lightsail_key.pem shogiwars_viewer.py ec2-user@<your-lightsail-ip>:~/my_shogiwars/
+scp -i ~/.ssh/lightsail_key.pem streamlit.service ec2-user@<your-lightsail-ip>:~/my_shogiwars/
+scp -i ~/.ssh/lightsail_key.pem nginx-shogiwars.conf ec2-user@<your-lightsail-ip>:~/my_shogiwars/
+```
+
+#### 5. 仮想環境を作成してパッケージをインストール
 
 ```bash
 # 仮想環境の作成（Python 3.13を使用）
@@ -477,7 +490,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-#### 5. resultディレクトリを作成してJSONファイルを配置
+#### 6. resultディレクトリを作成してJSONファイルを配置
 
 ```bash
 # サーバー側でresultディレクトリを作成
@@ -487,7 +500,7 @@ mkdir -p result
 scp -i ~/.ssh/lightsail_key.pem result/*.json ec2-user@<your-lightsail-ip>:~/my_shogiwars/result/
 ```
 
-#### 6. Nginxを設定
+#### 7. Nginxを設定
 
 ```bash
 # Nginx設定ファイルをコピー
@@ -504,7 +517,7 @@ sudo systemctl start nginx
 sudo systemctl status nginx
 ```
 
-#### 7. systemdサービスを設定
+#### 8. systemdサービスを設定
 
 ```bash
 # サービスファイルをsystemdディレクトリにコピー
@@ -523,7 +536,7 @@ sudo systemctl start streamlit
 sudo systemctl status streamlit
 ```
 
-#### 8. ファイアウォールでポート80を開放
+#### 9. ファイアウォールでポート80を開放
 
 Lightsailのコンソールから、インスタンスのネットワーキングタブで以下のルールを追加：
 
@@ -531,7 +544,7 @@ Lightsailのコンソールから、インスタンスのネットワーキン�
 - プロトコル: TCP
 - ポート: 80
 
-#### 9. ブラウザでアクセス
+#### 10. ブラウザでアクセス
 
 ```
 http://<your-lightsail-ip>
@@ -559,11 +572,25 @@ sudo tail -f /var/log/nginx/shogiwars_error.log   # エラーログ
 
 ### 更新手順
 
-コードを更新した場合：
+コードを更新した場合は、デプロイスクリプトの`--update`モードを使用するのが最も簡単です：
 
 ```bash
+# ローカル端末で実行
+./deploy.sh <your-lightsail-ip> ~/.ssh/lightsail_key.pem --update
+```
+
+手動で更新する場合：
+
+```bash
+# ローカル端末でファイルをアップロード
+scp -i ~/.ssh/lightsail_key.pem requirements.txt ec2-user@<your-lightsail-ip>:~/my_shogiwars/
+scp -i ~/.ssh/lightsail_key.pem shogiwars_viewer.py ec2-user@<your-lightsail-ip>:~/my_shogiwars/
+scp -i ~/.ssh/lightsail_key.pem nginx-shogiwars.conf ec2-user@<your-lightsail-ip>:~/my_shogiwars/
+
+# サーバーで実行
+ssh -i ~/.ssh/lightsail_key.pem ec2-user@<your-lightsail-ip>
+
 cd ~/my_shogiwars
-git pull
 source venv/bin/activate
 pip install -r requirements.txt
 
