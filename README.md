@@ -657,9 +657,11 @@ sudo ss -tlnp | grep 8501
 sudo systemctl restart streamlit
 ```
 
-#### 直接IPアクセスを防ぐ方法
+#### 直接IPアクセスとCloudFrontデフォルトドメインのリダイレクト
 
-**推奨**: Lightsail Distributionを使用する場合、ファイアウォールでポート80を閉じてください。
+**方法1: ファイアウォールで完全にブロック（推奨）**
+
+Lightsail Distributionを使用する場合、ファイアウォールでポート80を閉じてください。
 
 ```bash
 # Lightsailコンソールで設定
@@ -667,9 +669,28 @@ sudo systemctl restart streamlit
 # ポート80のルールを削除（または追加しない）
 ```
 
-Lightsail Distributionは AWS 内部ネットワークを通じてインスタンスにアクセスするため、パブリックなポート80を開放する必要はありません。これにより：
+これにより：
 - 直接IPアクセス: `http://<ip>` → タイムアウト（接続できない）
 - Distribution経由: `https://<distribution>` → 正常にアクセス可能
+
+**方法2: Nginxでカスタムドメインにリダイレクト**
+
+ポート80を開放した状態で、IPアドレスやCloudFrontデフォルトドメインでのアクセスを正規ドメインにリダイレクトできます。
+
+`nginx-shogiwars.conf` には以下の設定が含まれています：
+```nginx
+# IPアドレスでのアクセス → https://ohakado.com/ にリダイレクト
+if ($host ~* "^(\d+\.){3}\d+$") {
+    return 301 https://ohakado.com$request_uri;
+}
+
+# CloudFrontデフォルトドメイン → https://ohakado.com/ にリダイレクト
+if ($host = "d24bfdpv20ukl6.cloudfront.net") {
+    return 301 https://ohakado.com$request_uri;
+}
+```
+
+**注意**: CloudFrontドメインをカスタムドメインに変更する場合は、`nginx-shogiwars.conf` の17行目のドメイン名を変更してください。
 
 ### Lightsail Distribution（CDN）の設定
 
