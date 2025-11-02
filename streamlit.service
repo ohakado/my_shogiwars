@@ -1,0 +1,15 @@
+[Unit]
+Description=Streamlit Shogiwars Viewer
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/my_shogiwars
+Environment="PATH=/home/ec2-user/my_shogiwars/venv/bin"
+ExecStart=/home/ec2-user/my_shogiwars/venv/bin/streamlit run shogiwars_viewer.py --server.port=8501 --server.address=0.0.0.0
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
