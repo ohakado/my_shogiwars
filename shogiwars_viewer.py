@@ -438,15 +438,12 @@ if all_replays:
                 graph_df = graph_df.sort_values(by="日時")
 
                 # matplotlibでグラフを描画
-                # 日本語フォント設定
-                plt.rcParams['font.family'] = 'Hiragino Sans'
-
                 fig, ax = plt.subplots(figsize=(10, 2.0))
                 ax.plot(graph_df["日時"], graph_df["勝敗"], marker='o', linestyle='-', linewidth=1, markersize=3)
                 ax.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
                 ax.set_ylim(-1.5, 1.5)
                 ax.set_yticks([-1, 0, 1])
-                ax.set_yticklabels(["負け", "引き分け", "勝ち"])
+                ax.set_yticklabels(["Lose", "Draw", "Win"])
                 ax.grid(True, alpha=0.3)
                 plt.xticks(rotation=45)
                 plt.tight_layout()
