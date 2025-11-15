@@ -1,73 +1,137 @@
 # 変更履歴
 
-## 2025-11-02
+このプロジェクトの変更履歴を記録します。
 
-### 新機能: Streamlit Webアプリケーション
-- JSONファイルから棋譜データを表示するWebアプリケーションを追加
-- ファイル: `app.py`
-- 主な機能:
-  - `result/`ディレクトリ内のJSONファイル選択、またはファイルアップロード
-  - 対局一覧の表形式表示（日時、手番、勝敗、対戦相手、段位、バッジ）
-  - クリック可能な棋譜URLリンク
-  - フィルタリング機能（勝敗/対戦相手/バッジ）
-  - 統計表示（総対局数、勝率、勝ち/負け/引き分けの件数）
+形式は [Keep a Changelog](https://keepachangelog.com/ja/1.0.0/) に基づいています。
 
-### スクレイパーの改善
-- パラメータ名の変更: `user_id` → `user`, `max_pages` → `limit`
-- コマンドライン引数のサポート:
-  - `--opponent`: 対戦相手のID
+## [1.0.0] - 2025-11-16
+
+### 追加
+
+#### Google Analytics連携
+- Google Analytics 4 (GA4) によるアクセス解析機能を追加
+- Streamlitビューアに gtag.js を実装（`streamlit.components.v1.html()` 使用）
+- 環境変数 `GA_MEASUREMENT_ID` によるセキュアな設定
+- アクセス追跡機能:
+  - ページビューとユーザーセッション
+  - ユーザーの属性情報と地理的位置
+  - デバイスタイプ（PC/モバイル/タブレット）
+  - トラフィックソースとユーザー行動
+
+#### Streamlit Webビューアアプリケーション
+- 棋譜データを表示するインタラクティブなWebアプリケーション（`shogiwars_viewer.py`）
+- `result/` ディレクトリから複数のJSONファイルを読み込み
+- 高度なフィルタリング機能:
+  - 日付範囲選択
+  - 勝敗（勝ち/負け/引き分け）
+  - 手番（先手/後手）
+  - 対戦相手名
+  - 相手段位
+  - 戦型バッジ
+  - 対局相手タイプ（ランク/友達/指導/大会/ラーニング）
+  - 初期配置タイプ（通常/スプリント）
+  - 持ち時間（10秒/3分/10分）
+- AgGridによるインタラクティブな表:
+  - 対戦相手名と戦型バッジをクリックして絞り込み
+  - カスタム段位ソート機能付きソート可能な列
+  - 棋譜への直接リンク
+- 統計ダッシュボード:
+  - 総対局数、勝ち/負け/引き分けの件数と割合
+  - matplotlibによる勝敗推移グラフ
+  - 選択条件による絞り込み統計
+- 日本語フォント対応
+
+#### 将棋ウォーズスクレイパー
+- SeleniumとUndetected ChromeDriverによる自動棋譜データ取得
+- ログイン認証サポート
+- 柔軟なコマンドライン引数:
+  - `--user`: 対象ユーザーID（必須）
+  - `--opponent`: 対戦相手IDでフィルター
   - `--month`: 対象月（YYYY-MM形式）
-  - `--gtype`: ゲームタイプ（s1/sb）
+  - `--gtype`: ゲームタイプ（s1/sb/10min）
+  - `--opponent-type`: 対局相手タイプフィルター
+  - `--init-pos-type`: 初期配置タイプフィルター
   - `--limit`: 取得する最大ページ数
   - `--output`: 出力ファイル名
-- 環境変数は認証情報のみに限定（`SHOGIWARS_USERNAME`, `SHOGIWARS_PASSWORD`）
+- 構造化されたJSON出力形式:
+  - ゲームメタデータ（日時、URL、game_id）
+  - プレイヤー情報（名前、段位、勝敗）
+  - 戦型バッジ
+  - ゲームパラメータ
 
-### ドキュメントの改善
-- README.mdの構成を改善:
-  - タイトルを「将棋ウォーズ棋譜ツール」に変更
-  - 機能セクションを追加（スクレイパーとビューアの両方を説明）
-  - Webアプリケーションのセクションを追加
-- 注意事項の整理:
-  - 利用目的と範囲を明確化
-  - 改造に関する注意を追加
-  - 個人名を作者のアカウント名に変更
-  - 不要な記述を削除（商用利用、環境変数管理の推奨など）
+#### AWS Lightsail デプロイ
+- 自動デプロイスクリプト（`deploy.sh`）
+- 3つのデプロイモード対応:
+  - `--setup`: 初回サーバーセットアップ
+  - `--update`: コード更新とサービス再起動
+  - `--upload-json`: JSONデータファイルのアップロード
+- Nginxリバースプロキシ設定:
+  - StreamlitのWebSocket対応
+  - IPアドレス直接アクセス時のカスタムドメインへのリダイレクト
+  - CloudFrontデフォルトドメインのリダイレクト
+  - ヘルスチェックエンドポイント
+- systemdサービス設定による自動再起動
+- Python 3.13仮想環境セットアップ
+- CloudFront CDN連携サポート
 
-### 技術的な改善
-- Python 3.14対応:
-  - pyarrowのビルド問題を回避（HTMLテーブル表示を使用）
-  - requirements.txtにStreamlitとpandasを追加
-- .gitignoreに`.streamlit/`ディレクトリを追加
+### 変更
+- Git pullベースのデプロイからローカルファイルアップロードに移行
+- shebangを `python3` から `python` に変更
+- デプロイスクリプトのエラーハンドリング改善
+- ファイアウォールベースのIPブロックによるセキュリティ強化
 
-### 使用方法
+### 技術詳細
+- **Pythonバージョン**: 3.13以上
+- **主な依存パッケージ**:
+  - streamlit >= 1.28.0
+  - selenium >= 4.15.0
+  - pandas >= 2.0.0
+  - matplotlib >= 3.7.0
+  - streamlit-aggrid >= 1.1.0
+- **デプロイ環境**: AWS Lightsail + Nginx + systemd
+- **Webサーバー**: Nginx リバースプロキシ（ポート80）
+- **アプリケーションサーバー**: Streamlit（ポート8501）
 
-#### スクレイパー
-```bash
-export SHOGIWARS_USERNAME="your_username"
-export SHOGIWARS_PASSWORD="your_password"
-python scrape_shogiwars.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
-```
+### 初回リリース機能
+将棋ウォーズ棋譜ビューア＆スクレイパーツールの最初の安定版リリース（v1.0.0）:
+- フル機能の棋譜データスクレイパー
+- インタラクティブなWebベースビューア
+- 本番環境対応のAWSデプロイ
+- アクセス解析連携
 
-#### Webアプリケーション
-```bash
-source venv/bin/activate
-streamlit run app.py
-```
+---
 
-ブラウザで `http://localhost:8501` が開きます。
+## 開発履歴
 
-### コミット履歴
-- Remove command-line arguments, use environment variables only
-- Rename parameters: user_id → user, max_pages → limit
-- Remove environment variables for scraping parameters
-- Replace personal name in README examples with author's account
-- Add command-line arguments for scraping parameters
-- Update README notes section with usage purpose and cautions
-- Remove commercial use mention from README notes
-- Update caution wording about bulk game fetching
-- Update caution wording about fetching from individual game pages
-- Update caution to include parallel requests
-- Remove environment variable security note
-- Add Streamlit web application for game replay viewer
-- Fix pyarrow dependency issue by using HTML table display
-- Fix HTML table rendering issue
+### 2025-11-03 - AWS Lightsail デプロイ
+- Python 3.13対応のLightsailデプロイサポート追加
+- Nginxリバースプロキシ設定追加
+- 自動再起動用のsystemdサービス追加
+- IPアドレスとCloudFrontドメインのリダイレクト実装
+- Git pullからローカルファイルアップロードへのデプロイ方式変更
+- SSH鍵認証対応のデプロイスクリプト追加
+
+### 2025-11-02 - Streamlitビューア機能強化
+- AgGridを使ったインタラクティブなWebビューア作成
+- 包括的なフィルタリングシステム追加
+- クリックで絞り込み機能の実装
+- 統計と推移グラフの可視化追加
+- 複数JSONファイル読み込みサポート
+- 日本語フォント対応によるUI改善
+
+### 2025-11-01 - データフォーマット改善
+- プレイヤーオブジェクトをネストしたJSON形式に再構築
+- 出力データにプレイヤー段位情報を追加
+- Python 3.14サポート追加
+- 仮想環境セットアップ作成
+
+### 2025-10-31 - 認証機能
+- スクレイパーにログイン認証実装
+- スクレイピングの信頼性向上
+
+### 2025-10-29 - 初期開発
+- プロジェクト初期セットアップ
+- 基本スクレイパー実装
+- JSONデータ出力形式
+
+[1.0.0]: https://github.com/ohakado/my_shogiwars/releases/tag/v1.0.0
