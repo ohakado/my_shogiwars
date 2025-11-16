@@ -5,13 +5,11 @@ JSONファイルから棋譜データを読み込んで表示します
 """
 
 import streamlit as st
-import streamlit.components.v1 as components
 import json
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import matplotlib.pyplot as plt
-import os
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
 
 # ページ設定
@@ -20,21 +18,6 @@ st.set_page_config(
     page_icon="♟️",
     layout="wide"
 )
-
-# Google Analytics
-GA_MEASUREMENT_ID = os.getenv("GA_MEASUREMENT_ID", "")
-
-if GA_MEASUREMENT_ID:
-    components.html(f"""
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id={GA_MEASUREMENT_ID}"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){{dataLayer.push(arguments);}}
-      gtag('js', new Date());
-      gtag('config', '{GA_MEASUREMENT_ID}');
-    </script>
-    """, height=0)
 
 st.title("♟️ 将棋ウォーズ棋譜ビューア")
 
