@@ -680,18 +680,6 @@ if all_replays:
                         st.rerun()
         else:
             st.warning("表示する対局がありません")
-
-        # 読み込みログ（折りたたみ表示、初期状態は閉じる）
-        with st.expander("📋 読み込みログ", expanded=False):
-            if loaded_files:
-                st.success(f"✅ {len(loaded_files)}個のファイルから{len(all_replays)}件の棋譜を読み込みました")
-                if user_name:
-                    st.info(f"**ユーザー:** {user_name}")
-                st.markdown("**読み込んだファイル:**")
-                for f in loaded_files:
-                    st.text(f"  • {f}")
-            else:
-                st.warning("result/ディレクトリにJSONファイルがありません")
 else:
     st.info("result/ディレクトリにJSONファイルがありません")
 
