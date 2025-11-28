@@ -93,7 +93,7 @@ if [ "$MODE" == "--setup" ]; then
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "mkdir -p ~/${APP_DIR}/result"
 
     echo -e "${GREEN}[6/8] Nginxの設定...${NC}"
-    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && sudo cp nginx-shogiwars.conf /etc/nginx/conf.d/ && sudo nginx -t && sudo systemctl enable nginx && sudo systemctl start nginx"
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && sudo cp nginx-shogiwars.conf /etc/nginx/conf.d/ && sudo cp robots.txt security.txt /usr/share/nginx/html/ && sudo nginx -t && sudo systemctl enable nginx && sudo systemctl start nginx"
 
     echo -e "${GREEN}[7/8] systemdサービスの設定...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && sudo cp streamlit.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable streamlit && sudo systemctl start streamlit"
@@ -143,7 +143,7 @@ elif [ "$MODE" == "--update" ]; then
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && source venv/bin/activate && pip install -r requirements.txt"
 
     echo -e "${GREEN}[3/5] Nginx設定の更新...${NC}"
-    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && sudo cp nginx-shogiwars.conf /etc/nginx/conf.d/ && sudo nginx -t && sudo systemctl reload nginx"
+    ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && sudo cp nginx-shogiwars.conf /etc/nginx/conf.d/ && sudo cp robots.txt security.txt /usr/share/nginx/html/ && sudo nginx -t && sudo systemctl reload nginx"
 
     echo -e "${GREEN}[4/5] Streamlitサービスの再起動...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "sudo systemctl restart streamlit"
