@@ -80,6 +80,12 @@ if [ "$MODE" == "--setup" ]; then
     echo "  - nginx-shogiwars.conf をアップロード中..."
     scp ${SSH_OPTS} nginx-shogiwars.conf ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
 
+    echo "  - security.txt をアップロード中..."
+    scp ${SSH_OPTS} security.txt ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - robots.txt をアップロード中..."
+    scp ${SSH_OPTS} robots.txt ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
     echo -e "${GREEN}[4/8] 仮想環境の作成とパッケージインストール...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && python3.13 -m venv venv && source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt"
 
@@ -126,6 +132,12 @@ elif [ "$MODE" == "--update" ]; then
 
     echo "  - nginx-shogiwars.conf をアップロード中..."
     scp ${SSH_OPTS} nginx-shogiwars.conf ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - security.txt をアップロード中..."
+    scp ${SSH_OPTS} security.txt ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
+
+    echo "  - robots.txt をアップロード中..."
+    scp ${SSH_OPTS} robots.txt ${SSH_USER}@${LIGHTSAIL_IP}:~/${APP_DIR}/
 
     echo -e "${GREEN}[2/5] パッケージの更新...${NC}"
     ssh ${SSH_OPTS} ${SSH_USER}@${LIGHTSAIL_IP} "cd ~/${APP_DIR} && source venv/bin/activate && pip install -r requirements.txt"
