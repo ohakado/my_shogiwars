@@ -577,7 +577,7 @@ def main():
     driver = None
     try:
         print("Initializing Undetected Chrome WebDriver...")
-        driver = uc.Chrome(options=options, version_main=None)
+        driver = uc.Chrome(options=options, version_main=142)
 
         # ログイン
         login_success, user = login_to_shogiwars(driver, login_username, login_password, manual_captcha=manual_captcha)
