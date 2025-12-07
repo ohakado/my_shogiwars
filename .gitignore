@@ -56,3 +56,6 @@ geckodriver
 
 # Streamlit
 .streamlit/
+
+# commando sample
+sample.sh
