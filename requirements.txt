@@ -4,11 +4,3 @@ undetected-chromedriver>=3.5.0
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 setuptools>=80.0.0
-
-# Webアプリケーション用パッケージ
-streamlit>=1.28.0
-streamlit-aggrid>=1.1.0
-pandas>=2.0.0
-matplotlib>=3.7.0
-# Python 3.13以降ではpyarrow 18.0.0以降が推奨
-pyarrow>=18.0.0
