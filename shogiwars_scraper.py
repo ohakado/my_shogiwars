@@ -210,7 +210,8 @@ def scrape_page(
     }
 
     # gtypeが指定されている場合のみパラメータに追加
-    if gtype is not None:
+    # "10min"の場合はgtypeパラメータを送信しない（デフォルトが10分切れ負け）
+    if gtype is not None and gtype != "10min":
         params["gtype"] = gtype
 
     # URLを構築
@@ -514,20 +515,20 @@ def main():
     parser.add_argument(
         "--gtype",
         default=None,
-        choices=["s1", "sb"],
-        help="ゲームタイプ: s1=1手10秒, sb=3分切れ負け (default: 10分切れ負け)"
+        choices=["s1", "sb", "10min", "sf"],
+        help="ゲームタイプ: s1=1手10秒, sb=3分切れ負け, 10min=10分切れ負け, sf=カスタム (default: None=全種類)"
     )
     parser.add_argument(
         "--opponent-type",
-        default="normal",
+        default=None,
         choices=["normal", "friend", "coach", "closed_event", "learning"],
-        help="対戦相手タイプ: normal=ランク, friend=友達, coach=指導, closed_event=大会, learning=ラーニング (default: normal)"
+        help="対戦相手タイプ: normal=ランク, friend=友達, coach=指導, closed_event=大会, learning=ラーニング (default: None=全種類)"
     )
     parser.add_argument(
         "--init-pos-type",
-        default="normal",
+        default=None,
         choices=["normal", "sprint"],
-        help="初期配置タイプ: normal=通常, sprint=スプリント (default: normal)"
+        help="初期配置タイプ: normal=通常, sprint=スプリント (default: None=全種類)"
     )
     parser.add_argument(
         "--limit",
@@ -591,55 +592,132 @@ def main():
 
         print(f"\n=== Scraping game history for user: {user} ===\n")
 
-        # 出力ファイル名を生成（未指定の場合）
-        if output_file is None:
-            # resultディレクトリを作成（存在しない場合）
-            result_dir = "result"
-            os.makedirs(result_dir, exist_ok=True)
+        # 全組み合わせをループするかどうかを判定
+        all_combinations_mode = (gtype is None and opponent_type is None and init_pos_type is None)
 
-            # gtypeの文字列表現
-            gtype_str = gtype if gtype else "10min"
-            # ファイル名を生成
-            if opponent:
-                # 対戦相手が指定されている場合
-                filename = f"game_replays_{gtype_str}_{month}_{user}_{opponent}.json"
+        if all_combinations_mode:
+            print("全組み合わせモード: gtype, opponent_type, init_pos_type の全ての組み合わせをスクレイピングします\n")
+
+            # 全ての組み合わせを定義
+            all_gtypes = ["s1", "sb", "10min", "sf"]
+            all_opponent_types = ["normal", "friend", "coach", "closed_event", "learning"]
+            all_init_pos_types = ["normal", "sprint"]
+
+            total_combinations = len(all_gtypes) * len(all_opponent_types) * len(all_init_pos_types)
+            current_combination = 0
+
+            # 全組み合わせをループ
+            for gt in all_gtypes:
+                for ot in all_opponent_types:
+                    for ipt in all_init_pos_types:
+                        current_combination += 1
+                        print(f"\n{'='*80}")
+                        print(f"組み合わせ [{current_combination}/{total_combinations}]: gtype={gt}, opponent_type={ot}, init_pos_type={ipt}")
+                        print(f"{'='*80}\n")
+
+                        # 出力ファイル名を生成
+                        result_dir = "result"
+                        os.makedirs(result_dir, exist_ok=True)
+
+                        if opponent:
+                            filename = f"game_replays_{gt}_{ot}_{ipt}_{month}_{user}_{opponent}.json"
+                        else:
+                            filename = f"game_replays_{gt}_{ot}_{ipt}_{month}_{user}.json"
+
+                        output_filename = os.path.join(result_dir, filename)
+                        print(f"Output file: {output_filename}")
+
+                        # 棋譜URLを抽出
+                        game_urls = scrape_game_urls(
+                            driver=driver,
+                            user=user,
+                            opponent=opponent,
+                            month=month,
+                            gtype=gt,
+                            opponent_type=ot,
+                            init_pos_type=ipt,
+                            limit=limit
+                        )
+
+                        if game_urls:
+                            # 検索パラメータを記録
+                            query_params = {
+                                "user": user,
+                                "opponent": opponent if opponent else "(all)",
+                                "month": month,
+                                "gtype": gt,
+                                "opponent_type": ot,
+                                "init_pos_type": ipt,
+                                "limit": limit if limit else "(all)"
+                            }
+
+                            # JSONに保存
+                            save_to_json(game_urls, output_filename, query_params)
+                        else:
+                            print(f"No games found for this combination")
+
+            print(f"\n{'='*80}")
+            print(f"全組み合わせのスクレイピングが完了しました！ ({total_combinations}個)")
+            print(f"{'='*80}\n")
+        else:
+            # 単一パラメータモード（従来の動作）
+            # デフォルト値を設定
+            if gtype is None:
+                gtype = "10min"
+            if opponent_type is None:
+                opponent_type = "normal"
+            if init_pos_type is None:
+                init_pos_type = "normal"
+
+            # 出力ファイル名を生成（未指定の場合）
+            if output_file is None:
+                # resultディレクトリを作成（存在しない場合）
+                result_dir = "result"
+                os.makedirs(result_dir, exist_ok=True)
+
+                # gtypeの文字列表現
+                gtype_str = gtype
+                # ファイル名を生成
+                if opponent:
+                    # 対戦相手が指定されている場合
+                    filename = f"game_replays_{gtype_str}_{opponent_type}_{init_pos_type}_{month}_{user}_{opponent}.json"
+                else:
+                    # 対戦相手が未指定（全検索）の場合
+                    filename = f"game_replays_{gtype_str}_{opponent_type}_{init_pos_type}_{month}_{user}.json"
+
+                output_filename = os.path.join(result_dir, filename)
+                print(f"Output file: {output_filename}")
             else:
-                # 対戦相手が未指定（全検索）の場合
-                filename = f"game_replays_{gtype_str}_{month}_{user}.json"
+                output_filename = output_file
 
-            output_filename = os.path.join(result_dir, filename)
-            print(f"Output file: {output_filename}")
-        else:
-            output_filename = output_file
+            # 棋譜URLを抽出
+            game_urls = scrape_game_urls(
+                driver=driver,
+                user=user,
+                opponent=opponent,
+                month=month,
+                gtype=gtype,
+                opponent_type=opponent_type,
+                init_pos_type=init_pos_type,
+                limit=limit
+            )
 
-        # 棋譜URLを抽出
-        game_urls = scrape_game_urls(
-            driver=driver,
-            user=user,
-            opponent=opponent,
-            month=month,
-            gtype=gtype,
-            opponent_type=opponent_type,
-            init_pos_type=init_pos_type,
-            limit=limit
-        )
+            if game_urls:
+                # 検索パラメータを記録
+                query_params = {
+                    "user": user,
+                    "opponent": opponent if opponent else "(all)",
+                    "month": month,
+                    "gtype": gtype,
+                    "opponent_type": opponent_type,
+                    "init_pos_type": init_pos_type,
+                    "limit": limit if limit else "(all)"
+                }
 
-        if game_urls:
-            # 検索パラメータを記録
-            query_params = {
-                "user": user,
-                "opponent": opponent if opponent else "(all)",
-                "month": month,
-                "gtype": gtype if gtype else "10min",
-                "opponent_type": opponent_type,
-                "init_pos_type": init_pos_type,
-                "limit": limit if limit else "(all)"
-            }
-
-            # JSONに保存
-            save_to_json(game_urls, output_filename, query_params)
-        else:
-            print(f"\nNo games found with opponent: {opponent}")
+                # JSONに保存
+                save_to_json(game_urls, output_filename, query_params)
+            else:
+                print(f"\nNo games found with opponent: {opponent}")
 
     except Exception as e:
         print(f"Error: {e}")
