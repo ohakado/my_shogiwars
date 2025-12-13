@@ -607,6 +607,9 @@ def main():
             total_combinations = len(all_gtypes) * len(all_opponent_types) * len(all_init_pos_types)
             current_combination = 0
 
+            # 全ての棋譜を1つのリストに集約
+            all_game_urls = []
+
             # 全組み合わせをループ
             for gt in all_gtypes:
                 for ot in all_opponent_types:
@@ -615,18 +618,6 @@ def main():
                         print(f"\n{'='*80}")
                         print(f"組み合わせ [{current_combination}/{total_combinations}]: gtype={gt}, opponent_type={ot}, init_pos_type={ipt}")
                         print(f"{'='*80}\n")
-
-                        # 出力ファイル名を生成
-                        result_dir = "result"
-                        os.makedirs(result_dir, exist_ok=True)
-
-                        if opponent:
-                            filename = f"game_replays_{gt}_{ot}_{ipt}_{month}_{user}_{opponent}.json"
-                        else:
-                            filename = f"game_replays_{gt}_{ot}_{ipt}_{month}_{user}.json"
-
-                        output_filename = os.path.join(result_dir, filename)
-                        print(f"Output file: {output_filename}")
 
                         # 棋譜URLを抽出
                         game_urls = scrape_game_urls(
@@ -641,25 +632,45 @@ def main():
                         )
 
                         if game_urls:
-                            # 検索パラメータを記録
-                            query_params = {
-                                "user": user,
-                                "opponent": opponent if opponent else "(all)",
-                                "month": month,
-                                "gtype": gt,
-                                "opponent_type": ot,
-                                "init_pos_type": ipt,
-                                "limit": limit if limit else "(all)"
-                            }
-
-                            # JSONに保存
-                            save_to_json(game_urls, output_filename, query_params)
+                            print(f"Found {len(game_urls)} games for this combination")
+                            all_game_urls.extend(game_urls)
                         else:
                             print(f"No games found for this combination")
 
             print(f"\n{'='*80}")
             print(f"全組み合わせのスクレイピングが完了しました！ ({total_combinations}個)")
+            print(f"Total games found: {len(all_game_urls)}")
             print(f"{'='*80}\n")
+
+            if all_game_urls:
+                # 出力ファイル名を生成
+                result_dir = "result"
+                os.makedirs(result_dir, exist_ok=True)
+
+                if opponent:
+                    filename = f"game_replays_{month}_{user}_{opponent}.json"
+                else:
+                    filename = f"game_replays_{month}_{user}.json"
+
+                output_filename = os.path.join(result_dir, filename)
+                print(f"Output file: {output_filename}")
+
+                # 検索パラメータを記録（全組み合わせ）
+                query_params = {
+                    "user": user,
+                    "opponent": opponent if opponent else "(all)",
+                    "month": month,
+                    "gtype": "(all)",
+                    "opponent_type": "(all)",
+                    "init_pos_type": "(all)",
+                    "limit": limit if limit else "(all)"
+                }
+
+                # JSONに保存
+                save_to_json(all_game_urls, output_filename, query_params)
+            else:
+                print(f"\nNo games found")
+
         else:
             # 単一パラメータモード（従来の動作）
             # デフォルト値を設定
@@ -676,15 +687,13 @@ def main():
                 result_dir = "result"
                 os.makedirs(result_dir, exist_ok=True)
 
-                # gtypeの文字列表現
-                gtype_str = gtype
-                # ファイル名を生成
+                # ファイル名を生成（シンプルな形式）
                 if opponent:
                     # 対戦相手が指定されている場合
-                    filename = f"game_replays_{gtype_str}_{opponent_type}_{init_pos_type}_{month}_{user}_{opponent}.json"
+                    filename = f"game_replays_{month}_{user}_{opponent}.json"
                 else:
                     # 対戦相手が未指定（全検索）の場合
-                    filename = f"game_replays_{gtype_str}_{opponent_type}_{init_pos_type}_{month}_{user}.json"
+                    filename = f"game_replays_{month}_{user}.json"
 
                 output_filename = os.path.join(result_dir, filename)
                 print(f"Output file: {output_filename}")
