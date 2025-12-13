@@ -63,7 +63,9 @@ python shogiwars_scraper.py
 python shogiwars_scraper.py
 ```
 
-### 基本的な使い方
+### 基本的な使い方（推奨）
+
+**年月のみを指定して全組み合わせをスクレイピング:**
 
 ```bash
 # 仮想環境を使用している場合は先に有効化
@@ -73,16 +75,28 @@ source venv/bin/activate
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
 
-# スクリプトを実行
+# 年月のみを指定（全組み合わせモード）
+python shogiwars_scraper.py --month 2025-12
+```
+
+この方法では、以下の**40通りすべての組み合わせ**を自動的にスクレイピングします：
+- ゲームタイプ: 4種類（`s1`=10秒, `sb`=3分, `10min`=10分, `sf`=カスタム）
+- 対戦相手タイプ: 5種類（`normal`=ランク, `friend`=友達, `coach`=指導, `closed_event`=大会, `learning`=ラーニング）
+- 初期配置タイプ: 2種類（`normal`=通常, `sprint`=スプリント）
+
+すべての対局データは1つのJSONファイル `result/game_replays_2025-12_ohakado.json` にまとめられます。
+
+**デフォルト設定（年月も指定しない場合）:**
+
+```bash
 python shogiwars_scraper.py
 ```
 
-デフォルトでは以下の設定で実行されます:
 - ユーザーID: ログインユーザー（自動検出）
 - 対戦相手: 未指定（全ての対局を取得）
 - 対象月: 現在月（YYYY-MM形式で自動設定）
-- ゲームタイプ: 無指定 (10分切れ負け)
-- 出力ファイル: `result/game_replays_[gtype]_[month]_[user].json` 形式で自動生成
+- 全組み合わせモード（40通りの組み合わせをすべてスクレイピング）
+- 出力ファイル: `result/game_replays_[month]_[user].json` 形式で自動生成
 
 ### パラメータ設定
 
@@ -101,25 +115,37 @@ python shogiwars_scraper.py
 スクレイピングパラメータはコマンドライン引数で指定します：
 
 ```bash
-python shogiwars_scraper.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
+# 全組み合わせモード（推奨）
+python shogiwars_scraper.py --month 2024-10
+
+# 特定の組み合わせのみ（単一パラメータモード）
+python shogiwars_scraper.py --gtype s1 --opponent-type normal --init-pos-type normal --month 2024-10
 ```
 
 **利用可能な引数:**
-- `--opponent`: 対戦相手のID（未指定の場合は全対局を取得）
 - `--month`: 対象月（YYYY-MM形式、デフォルト: 現在月）
-- `--gtype`: ゲームタイプ（`s1`=1手10秒、`sb`=3分切れ負け、未指定=10分切れ負け）
+- `--opponent`: 対戦相手のID（未指定の場合は全対局を取得）
+- `--gtype`: ゲームタイプ（`s1`=10秒、`sb`=3分、`10min`=10分、`sf`=カスタム、未指定=全種類）
+- `--opponent-type`: 対戦相手タイプ（`normal`=ランク、`friend`=友達、`coach`=指導、`closed_event`=大会、`learning`=ラーニング、未指定=全種類）
+- `--init-pos-type`: 初期配置タイプ（`normal`=通常、`sprint`=スプリント、未指定=全種類）
 - `--limit`: 取得する最大ページ数（未指定の場合は全ページ）
 - `--output`: 出力ファイル名（未指定の場合は自動生成）
 
 **ファイル名の自動生成ルール:**
 - デフォルトでは `result/` ディレクトリに保存されます
-- 対戦相手未指定: `result/game_replays_[gtype]_[month]_[user].json`
-  - 例: `result/game_replays_s1_2024-10_ohakado.json`
-- 対戦相手指定: `result/game_replays_[gtype]_[month]_[user]_[opponent].json`
-  - 例: `result/game_replays_s1_2024-10_ohakado_odakaho.json`
+- 全組み合わせモード（`--gtype`, `--opponent-type`, `--init-pos-type` をすべて未指定）:
+  - `result/game_replays_[month]_[user].json`
+  - 例: `result/game_replays_2025-12_ohakado.json`
+- 単一パラメータモード（いずれかを指定した場合）:
+  - `result/game_replays_[month]_[user].json`
+  - 例: `result/game_replays_2025-12_ohakado.json`
+- 対戦相手指定時（両モード共通）:
+  - `result/game_replays_[month]_[user]_[opponent].json`
+  - 例: `result/game_replays_2025-12_ohakado_odakaho.json`
 
 **注意:**
 - ユーザーIDは、ログイン後に自動的に検出されます
+- **推奨**: 年月のみ指定して全組み合わせモードで実行（最も簡単で包括的）
 
 ## ディレクトリ構造
 
@@ -208,51 +234,56 @@ JSONファイルには以下の形式でデータが保存されます:
 
 ## 使用例
 
-### デフォルト設定で実行
+### デフォルト設定で実行（推奨）
 
-認証情報のみ設定して実行（全対局、現在月、10分切れ負け）：
+認証情報のみ設定して実行（全対局、現在月、全組み合わせ）：
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
 python shogiwars_scraper.py
-# 出力: result/game_replays_10min_2025-11_ohakado.json
+# 出力: result/game_replays_2025-12_ohakado.json
+# 40通りの組み合わせをすべてスクレイピング
 ```
 
-### 2024年10月の全対局を抽出（1手10秒）
+### 2024年10月の全対局を抽出（全組み合わせ）
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python shogiwars_scraper.py --gtype s1 --month 2024-10
-# 出力: result/game_replays_s1_2024-10_ohakado.json
+python shogiwars_scraper.py --month 2024-10
+# 出力: result/game_replays_2024-10_ohakado.json
+# 40通りの組み合わせをすべてスクレイピング
 ```
 
-### 最初の100ページだけ取得
+### 特定の組み合わせのみを取得（単一パラメータモード）
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python shogiwars_scraper.py --gtype s1 --limit 100
-# 出力: result/game_replays_s1_2025-11_ohakado.json
+python shogiwars_scraper.py --gtype s1 --opponent-type normal --init-pos-type normal --month 2024-10
+# 出力: result/game_replays_2024-10_ohakado.json
+# 10秒・ランク・通常のみをスクレイピング
 ```
 
-### 特定の対戦相手との対局を抽出
+### 最初の100ページだけ取得（全組み合わせ）
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python shogiwars_scraper.py --opponent "odakaho" --gtype s1
-# 出力: result/game_replays_s1_2025-11_ohakado_odakaho.json
+python shogiwars_scraper.py --month 2025-12 --limit 100
+# 出力: result/game_replays_2025-12_ohakado.json
+# 各組み合わせで最大100ページまで
 ```
 
-### すべての引数を指定
+### 特定の対戦相手との対局を抽出（全組み合わせ）
 
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python shogiwars_scraper.py --gtype s1 --month 2024-10 --limit 100 --opponent "odakaho"
-# 出力: result/game_replays_s1_2024-10_ohakado_odakaho.json
+python shogiwars_scraper.py --opponent "odakaho" --month 2025-12
+# 出力: result/game_replays_2025-12_ohakado_odakaho.json
+# 40通りの組み合わせで「odakaho」との対局のみ
 ```
 
 ### カスタムファイル名を指定
@@ -260,7 +291,7 @@ python shogiwars_scraper.py --gtype s1 --month 2024-10 --limit 100 --opponent "o
 ```bash
 export SHOGIWARS_USERNAME="your_username"
 export SHOGIWARS_PASSWORD="your_password"
-python shogiwars_scraper.py --opponent "odakaho" --output my_games.json
+python shogiwars_scraper.py --month 2025-12 --output my_games.json
 # 出力: my_games.json (カレントディレクトリ)
 ```
 
